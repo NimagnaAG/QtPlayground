@@ -2,7 +2,7 @@
 
 A Qt based application with a rendering system similar to the Nimagna application.
 
-Up to now only for Windows.
+Works on Windows and on macOS.
 
 ## Usage
 
@@ -17,7 +17,7 @@ Up to now only for Windows.
 
 #### Requirements
 
-- Windows 10 or 11 (not yet tested on macOS)
+- Windows 10 or 11
 - Install Visual Studio 2022 with "C++ Desktop Development" workload.
 - Install [OpenSource Qt](https://www.qt.io/download-open-source) version **6.8.0** using default installation (must end up in default installation folder C:\Qt\6.8.0\msvc2022_64) and with the following components
   - MSVC 2022 64-bit 
@@ -50,4 +50,50 @@ Up to now only for Windows.
 
   ### macOS
 
-  Not yet supported/tested.
+#### Requirements
+
+- macOS 12.3 or newer
+- Install brew package manager
+  - `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`
+  - add `PATH=/opt/homebrew/bin/brew:$PATH`  to `~/.zshrc` (or `~/.bashrc` depending on your terminal settings)
+  - Verify: `brew --version` and `which brew`
+- Install CMake (>=3.24): `brew install cmake`, verify with `cmake --version`
+- Install Git: `brew install git`, verify with `git --version`
+- Install Git LFS: `brew install git-lfs`
+  - run `git lfs install`
+- Install Qt6
+  - Download Qt Open Source installer form https://www.qt.io/download-qt-installer-oss
+  - Install Qt version **6.8.0** with the following options
+    - macos
+    - Additional Libraries
+      - Qt Image Formats
+      - Qt Multimedia
+      - Note: Qt might automatically install additional libraries if needed
+- Install XCode command line tools: `xcode-select --install`
+- Install XCode (tested with version 16) using App Store
+- Clone this repository into `SourceDir`, e.g.  `~/development/QtApplication`
+
+- Install XCode.
+- Install [OpenSource Qt](https://www.qt.io/download-open-source) version **6.8.0** using default installation (must end up in default installation folder C:\Qt\6.8.0\msvc2022_64) and with the following components
+  - MSVC 2022 64-bit 
+  - From "Additional Libraries"
+    - Qt Image Formats
+    - Qt Multimedia
+    - Note: Qt might automatically install additional libraries if needed
+- Install Git
+  - https://git-scm.com/downloads
+  - Install GitHub LFS extension: https://git-lfs.com/
+- Check out this repository: `git clone https://github.com/NimagnaAG/QtPlayground.git`
+
+#### Building the solution using CMake
+
+- Pull the latest changes from Git: 
+  - `git pull --rebase`
+- In a shell
+  - cd into the repository root folder `SourceDir`
+  - `mkdir build`
+  - `cd build`
+  - `cmake -DCMAKE_OSX_ARCHITECTURES=arm64 -G Xcode ..`
+- Open `{SourceDir}/build/QtPlayground - QtPlayground.xcodeproj` in XCode
+  - Compile and run
+  - Note: Works in Debug mode only due to signing
