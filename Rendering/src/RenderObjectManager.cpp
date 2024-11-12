@@ -163,13 +163,8 @@ void RenderObjectManager::addTextureObject(const QString& filename) {
   }
 
   std::shared_ptr<TextureRenderObject> renderObject =
-      std::make_shared<TextureRenderObject>(TextureRenderObject::kDefaultTextureTarget);
-
-  // initialize object
-  tryMakeOpenGlContextCurrent(false);
-  renderObject->initialize();
+      std::make_shared<TextureRenderObject>(TextureRenderObject::kDefaultTextureTarget, qImage);
   renderObject->setDisplayName(filename);
-  renderObject->setTextureData(qImage);
 
   // add object to data structure
   mRenderObjectsList.emplace_back(renderObject);
