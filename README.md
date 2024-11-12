@@ -96,4 +96,3 @@ Works on Windows and on macOS.
   - `cmake -DCMAKE_OSX_ARCHITECTURES=arm64 -G Xcode ..`
 - Open `{SourceDir}/build/QtPlayground - QtPlayground.xcodeproj` in XCode
   - Compile and run
-  - Note: Works in Debug mode only due to signing
