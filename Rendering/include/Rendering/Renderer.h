@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QtCore/QThread>
+#include <QtCore/QTimer>
 
 #include "Rendering/RenderObjectManager.h"
 #include "Rendering/Rendering.h"

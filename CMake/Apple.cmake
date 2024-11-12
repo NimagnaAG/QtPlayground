@@ -3,17 +3,9 @@
 ################################################################################
 message(STATUS "Configuring ${PROJECT_NAME} for MacOS")
 
-
 # Disable adding $(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME) to library search paths
 # https://cmake.org/cmake/help/latest/policy/CMP0142.html
 cmake_policy(SET CMP0142 NEW)
-
-if (${CMAKE_OSX_ARCHITECTURES} STREQUAL "arm64")
-    # with XCode 15.0, the linker crashed with a segmentation fault. Using the old linker solves this.
-    # related apple blog post: https://developer.apple.com/forums/thread/731089?page=2
-    message(WARNING "macOS only: Explicitly using classic linker. \nSince XCode 15.0, the standard linker crashes with a segmentation fault. Please check again when updating XCode and remove once this option is not needed anymore.")
-    add_link_options("-ld_classic")
-endif()
 
 ################################################################################
 # Set target arch type if empty. 
@@ -30,9 +22,12 @@ else()
     message(FATAL_ERROR "Please configure using `sh Scripts/macos/ConfigureProjectForMacOS.sh`")
 endif()
 
+set(CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_STYLE $<IF:$<CONFIG:Debug>,Automatic,Manual>)
+
 ################################################################################
 # Output path depends on configuration
 ################################################################################
+
 set(NIMAGNA_BASE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/${CMAKE_PLATFORM_NAME}/${CMAKE_OSX_ARCHITECTURES}")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${NIMAGNA_BASE_OUTPUT_DIRECTORY}/$<IF:$<CONFIG:Debug>,Debug,Release>)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${NIMAGNA_BASE_OUTPUT_DIRECTORY}/$<IF:$<CONFIG:Debug>,Debug,Release>)
@@ -43,6 +38,10 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${NIMAGNA_BASE_OUTPUT_DIRECTORY}/$<IF:$<CONFI
 ################################################################################
 function(CopyResourceToBundle TargetName ResourceFile)
   message(VERBOSE "Adding bundle copy step for ${ResourceFile} to ${TargetName}")
+  add_custom_command(TARGET ${TargetName} POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E make_directory
+        $<TARGET_BUNDLE_CONTENT_DIR:${TargetName}>/Resources/
+  )
   add_custom_command(TARGET ${TargetName} POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E copy
         ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${ResourceFile}
@@ -55,5 +54,3 @@ function(CopyResourceToBundle TargetName ResourceFile)
       DEPENDS $<TARGET_BUNDLE_CONTENT_DIR:${TargetName}>/Resources/${ResourceFile}
       COMMENT "mklink .app/Contents/Resources/${ResourceFile} -> .app/Contents/MacOS/${ResourceFile}")
 endfunction()
-
-

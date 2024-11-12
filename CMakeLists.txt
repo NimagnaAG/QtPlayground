@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.24 FATAL_ERROR)
 
 # MacOS: Minimum target platform. Must be set before any project invocation
 set(CMAKE_OSX_DEPLOYMENT_TARGET 12.3 CACHE STRING "Minimal MacOS target platform")
+set(MACOSX_BUNDLE_GUI_IDENTIFIER "com.nimagna.QtPlayground")
 
 #[=============================================================================[
     Project

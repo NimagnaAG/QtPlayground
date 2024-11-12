@@ -75,6 +75,8 @@ elseif (APPLE)
         OUTPUT_NAME ${PROJECT_NAME}
         FOLDER "Application"
         INTERPROCEDURAL_OPTIMIZATION_RELEASE "TRUE"
+        MACOSX_BUNDLE_GUI_IDENTIFIER "com.nimagna.QtPlayground"
+        XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "com.nimagna.QtPlayground"
         MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_LIST_DIR}/MainApplicationInfo.plist"
     )
 endif()
@@ -96,7 +98,7 @@ endif()
 
 if (APPLE)
     # Copy resource files to bundle and create symlink
-    CopyResourceToBundle(${PROJECT_NAME} "Base.rcc")              
+    CopyResourceToBundle(${PROJECT_NAME} "MainApplication.rcc")
 endif()
 
 ################################################################################
