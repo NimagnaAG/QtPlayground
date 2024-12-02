@@ -52,10 +52,17 @@ void RenderWorker::loadImage(QString filename) {
   mRenderObjectManager->addTextureObject(filename);
 }
 
+void RenderWorker::loadGLTF(QString filename) {
+  SPDLOG_INFO("Load GLTF called");
+  if (!mRenderObjectManager) return;
+
+  SPDLOG_INFO("A GLTF Should be displayed now..: " + filename);
+  // add gltf viewer / loader here
+}
+
 void RenderWorker::render() {
   // slot called by the timer to trigger a render iteration
   if (!mRenderObjectManager || !mRenderObjectManager->isInitialized()) return;
-
   // render
   if (mRenderObjectManager->render()) {
     emit renderFrameReady();
@@ -90,6 +97,7 @@ Renderer::Renderer() {
   connect(this, &Renderer::startRenderer, mRenderWorker.get(), &RenderWorker::startRendering);
   connect(this, &Renderer::stopRenderer, mRenderWorker.get(), &RenderWorker::stopRendering);
   connect(this, &Renderer::loadImage, mRenderWorker.get(), &RenderWorker::loadImage);
+  connect(this, &Renderer::loadGLTF, mRenderWorker.get(), &RenderWorker::loadGLTF);
   connect(mRenderWorker.get(), &RenderWorker::renderFrameReady, this,
           &Renderer::renderFrameUpdated);
 

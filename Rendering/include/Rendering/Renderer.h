@@ -38,6 +38,8 @@ class RenderWorker final : public QObject {
   void stopRendering();
   // loads an image as texture render object
   void loadImage(QString filename);
+  // loads a gltf mesh
+  void loadGLTF(QString filename);
 
  signals:
   // signals a rendered frame to the consumer, e.g. the virtual camera
@@ -97,6 +99,7 @@ class RENDERING_API Renderer final : public QObject {
   void renderFrameUpdated();
 
   void loadImage(QString filename);
+  void loadGLTF(QString filename);
 
  private:
   // The render worker performs the rendering

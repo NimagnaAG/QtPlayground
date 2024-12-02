@@ -34,6 +34,7 @@
      <string>&amp;File</string>
     </property>
     <addaction name="actionLoad"/>
+    <addaction name="test"/>
    </widget>
    <addaction name="menuFile"/>
   </widget>
@@ -48,6 +49,17 @@
     <enum>Qt::ShortcutContext::ApplicationShortcut</enum>
    </property>
   </action>
+    <action name="test">
+	    <property name="text">
+		    <string>&amp;Load gltf...</string>
+	    </property>
+	    <property name="toolTip">
+		    <string>Load gltf from file</string>
+	    </property>
+	    <property name="shortcutContext">
+		    <enum>Qt::ShortcutContext::ApplicationShortcut</enum>
+	    </property>
+    </action>
  </widget>
  <customwidgets>
   <customwidget>

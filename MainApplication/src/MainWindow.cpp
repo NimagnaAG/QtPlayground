@@ -34,6 +34,17 @@ void MainWindow::on_actionLoad_triggered() {
   }
 }
 
+void MainWindow::on_test_triggered() {
+  SPDLOG_INFO("User action: test");
+  const QString fileName =
+      QFileDialog::getOpenFileName(this, tr("Open Show"), "", tr("GLTF (*.gltf)"));
+  SPDLOG_INFO("Filename action: " + fileName);
+  if (!fileName.isNull()) {
+    // not canceled
+    mRenderer->loadGLTF(fileName);
+  }
+}
+
 void MainWindow::onOpenGlWidgetInitialized() const {
   mRenderer->start(mUI.openGLWidget->context());
   mUI.openGLWidget->update();
