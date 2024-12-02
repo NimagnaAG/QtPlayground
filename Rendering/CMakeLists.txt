@@ -25,6 +25,10 @@ set(Header_Files
     "include/Rendering/RenderData.h"
     "include/Rendering/RenderObjectManager.h"
     "include/Rendering/TextureRenderObject.h"
+    "include/Rendering/tiny_gltf.h"
+    "include/Rendering/stb_image.h"
+    "include/Rendering/stb_image_write.h"
+    "include/Rendering/json.hpp"
 )
 source_group("Header Files" FILES ${Header_Files})
 
