@@ -6,11 +6,6 @@
 #include <QtGui/QPainter>
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QMessageBox>
-#include <QtGui/QImage>
-#define TINYGLTF_IMPLEMENTATION
-#define STB_IMAGE_IMPLEMENTATION
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include <Rendering/tiny_gltf.h>
 
 namespace nimagna {
 
@@ -25,159 +20,6 @@ OpenGlWidget::OpenGlWidget(QWidget* parent /*= nullptr*/, Qt::WindowFlags f /*= 
   format.setSamples(8);
   setFormat(format);
   setMouseTracking(true);
-  mTransformMatrix.setToIdentity();
-}
-
-void OpenGlWidget::processModel(const tinygltf::Model& model) {
-  initializeOpenGLFunctions();
-
-  for (const auto& mesh : model.meshes) {
-    for (const auto& primitive : mesh.primitives) {
-      // Create and bind Vertex Array Object (VAO)
-      auto vao = std::make_unique<QOpenGLVertexArrayObject>();
-      if (!vao->create()) {
-        SPDLOG_ERROR("Failed to create VertexArrayObject");
-        continue;
-      }
-      vao->bind();
-
-      // Create and bind Vertex Buffer Object (VBO)
-      QOpenGLBuffer vbo(QOpenGLBuffer::VertexBuffer);
-      if (!vbo.create()) {
-        SPDLOG_ERROR("Failed to create VertexBufferObject");
-        continue;
-      }
-      vbo.setUsagePattern(QOpenGLBuffer::StaticDraw);
-
-      // Assuming the primitive has positions
-      const tinygltf::Accessor& posAccessor =
-          model.accessors[primitive.attributes.find("POSITION")->second];
-      const tinygltf::BufferView& posView = model.bufferViews[posAccessor.bufferView];
-      const tinygltf::Buffer& posBuffer = model.buffers[posView.buffer];
-
-      // Copy and scale vertex positions
-      std::vector<float> scaledPositions(posAccessor.count * 3);  // Assuming vec3 positions
-      const float* positions = reinterpret_cast<const float*>(&posBuffer.data[posView.byteOffset]);
-      float scaleFactor = 10.0f;  // Scale factor
-
-      for (size_t i = 0; i < posAccessor.count; ++i) {
-        scaledPositions[i * 3 + 0] = positions[i * 3 + 0] * scaleFactor;
-        scaledPositions[i * 3 + 1] = positions[i * 3 + 1] * scaleFactor;
-        scaledPositions[i * 3 + 2] = positions[i * 3 + 2] * scaleFactor;
-      }
-
-      vbo.bind();
-      vbo.allocate(scaledPositions.data(),
-                   static_cast<int>(scaledPositions.size() * sizeof(float)));
-
-      // Set up vertex attribute pointers
-      glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-      glEnableVertexAttribArray(0);
-
-      // Create and bind Index Buffer Object (EBO) if it exists
-      QOpenGLBuffer ebo(QOpenGLBuffer::IndexBuffer);
-      int indexCount = 0;
-      if (primitive.indices >= 0) {
-        const tinygltf::Accessor& indexAccessor = model.accessors[primitive.indices];
-        const tinygltf::BufferView& indexView = model.bufferViews[indexAccessor.bufferView];
-        const tinygltf::Buffer& indexBuffer = model.buffers[indexView.buffer];
-
-        if (!ebo.create()) {
-          SPDLOG_ERROR("Failed to create IndexBufferObject");
-          continue;
-        }
-        ebo.setUsagePattern(QOpenGLBuffer::StaticDraw);
-        ebo.bind();
-        ebo.allocate(&indexBuffer.data[indexView.byteOffset],
-                     static_cast<int>(indexView.byteLength));
-
-        indexCount = static_cast<int>(indexAccessor.count);  // Store the index count
-      }
-
-      // Unbind VAO
-      vao->release();
-
-      // Store the VAO and index count for rendering later
-      mVAOs.push_back(std::move(vao));
-      mIndexCounts.push_back(indexCount);
-    }
-  }
-}
-
-void OpenGlWidget::loadTexture(const QString& filePath) {
-  QImage image(filePath);
-  if (image.isNull()) {
-    SPDLOG_ERROR("Failed to load texture image from file: {}", filePath.toStdString());
-    return;
-  }
-
-  // Convert the image to the format expected by OpenGL
-  QImage glImage = image.convertToFormat(QImage::Format_RGBA8888);
-  mTextureRenderObject->setTextureData(glImage);
-
-  /*
-  GLuint textureID;
-  glGenTextures(1, &textureID);
-  glBindTexture(GL_TEXTURE_2D, textureID);
-
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, glImage.width(), glImage.height(), 0, GL_RGBA,
-               GL_UNSIGNED_BYTE, glImage.bits());
-
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-  glBindTexture(GL_TEXTURE_2D, 0);  // Unbind the texture
-  return 1;
-  */
-
-}
-
-void OpenGlWidget::renderModel() {
-  if (!mTextureRenderObject || !mTextureRenderObject->mShaderProgram) {
-    SPDLOG_ERROR("Shader program is not available.");
-    return;
-  }
-
-  // Use the shader program from TextureRenderObject
-  mTextureRenderObject->mShaderProgram->bind();
-
-  // Pass the transformation matrix to the shader
-  GLuint transformLoc = mTextureRenderObject->mShaderProgram->uniformLocation("worldToView");
-  if (transformLoc == -1) {
-    SPDLOG_ERROR("Failed to get uniform location for transform.");
-    return;
-  }
-  mTextureRenderObject->mShaderProgram->setUniformValue(transformLoc, mTransformMatrix);
-  loadTexture("D:\\3dassets\\avocado\\Avocado_baseColor.png");
-
-  // Load and bind the new texture
-  /*
-  GLuint newTextureID = loadTexture("D:\\3dassets\\avocado\\Avocado_baseColor.png");
-  if (newTextureID == 0) {
-    SPDLOG_ERROR("Failed to load new texture.");
-    return;
-  }
-  */
-
-  glActiveTexture(GL_TEXTURE0 + mTextureRenderObject->mColorTextureUnit);  // Activate the texture unit
-
-  // Set the texture uniform in the shader
-  GLuint textureLoc = mTextureRenderObject->mShaderProgram->uniformLocation("imageTexture");
-  if (textureLoc == -1) {
-    SPDLOG_ERROR("Failed to get uniform location for texture.");
-    return;
-  }
-  mTextureRenderObject->mShaderProgram->setUniformValue(textureLoc, mTextureRenderObject->mColorTextureUnit);
-
-  for (size_t i = 0; i < mVAOs.size(); ++i) {
-    mVAOs[i]->bind();
-    glDrawElements(GL_TRIANGLES, mIndexCounts[i], GL_UNSIGNED_SHORT, 0);
-    mVAOs[i]->release();
-  }
-
-  mTextureRenderObject->mShaderProgram->release();
 }
 
 OpenGlWidget::~OpenGlWidget() {
@@ -230,45 +72,20 @@ void OpenGlWidget::initializeGL() {
   glEnable(GL_MULTISAMPLE);
 
   SPDLOG_WARN("Active viewport renderer: {}", this->glGetString(GL_RENDERER));
-
-  
-  tinygltf::Model model;
-  tinygltf::TinyGLTF loader;
-  std::string err;
-  std::string warn;
-
-  bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, "D:\\3dassets\\avocado\\Avocado.gltf");
-  if (!warn.empty()) {
-    SPDLOG_WARN("GLTF Warning: {}", warn);
-  }
-  if (!err.empty()) {
-    SPDLOG_ERROR("GLTF Error: {}", err);
-  }
-  if (!ret) {
-    SPDLOG_ERROR("Failed to load GLTF model");
-    return;
-  }
-
-  // Process the model (e.g., create OpenGL buffers)
-  processModel(model);
-
-  /*
-   */
 }
 
 void OpenGlWidget::paintGL() {
-  // Bind default framebuffer
+  // bind default framebuffer
   QOpenGLFramebufferObject::bindDefault();
   glEnable(GL_MULTISAMPLE);
 
-  // Setup output and background
+  // setup output and background
   glViewport(mViewPort.x(), mViewPort.y(), mViewPort.width(), mViewPort.height());
   glClearColor(0.f, 0.f, 0.f, 1.0f);
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);  // Clear both color and depth buffers
-  
+  glClear(GL_COLOR_BUFFER_BIT);
 
-  // Render RenderObjectManager's framebuffer as texture to screen
-  // Only paint if there's a render object manager and it is initialized
+  // render RenderObjectManager's framebuffer as texture to screen
+  // only paint if there's a render object manager and it is initialized
   if (mRenderer && mRenderer->renderObjectManager() &&
       mRenderer->renderObjectManager()->isInitialized()) {
     glActiveTexture(GL_TEXTURE0 + mTextureRenderObject->colorTextureUnit());
@@ -276,25 +93,15 @@ void OpenGlWidget::paintGL() {
         TextureRenderObject::glTarget(mRenderer->renderObjectManager()->renderFrameBufferType()),
         mRenderer->renderObjectManager()->renderFrameBuffer()->texture());
   }
-
-  // Render texture object without using its texture
+  // render texture object without using its texture
   mTextureRenderObject->draw();
   glActiveTexture(GL_TEXTURE0);
-  
+
   if (!mFirstDrawOccurred) {
-    // Once the first time the buffer is drawn, emit the initialized signal
+    // once the first time the buffer is drawn, emit the initialized signal
     emit initialized();
   }
   mFirstDrawOccurred = true;
-
-  // Render the model
-  renderModel();
-
-  // Check for OpenGL errors (optional but recommended)
-  GLenum err;
-  while ((err = glGetError()) != GL_NO_ERROR) {
-    SPDLOG_ERROR("OpenGL error: {}", err);
-  }
 }
 
 void OpenGlWidget::resizeGL(int w, int h) {
@@ -401,16 +208,12 @@ void OpenGlWidget::mouseMoveEvent(QMouseEvent* event) {
     float factor = 0.035f;
     float differenceX = factor * (event->globalPosition().x() - mLastMousePosition.x());
     float differenceY = factor * (event->globalPosition().y() - mLastMousePosition.y());
-
-    // Calculate rotation angles
-    float angleX = differenceY;  // Rotate around X-axis based on Y movement
-    float angleY = differenceX;  // Rotate around Y-axis based on X movement
-
-    // Apply rotations to the transformation matrix
-    mTransformMatrix.rotate(angleX, 5.0f, 0.0f, 0.0f);  // Rotate around X-axis
-    mTransformMatrix.rotate(angleY, 0.0f, 5.0f, 0.0f);  // Rotate around Y-axis
-
+    RenderData::ShotFraming3D framing3D = renderData->framing3D();
+    QVector3D position = framing3D.position();
+    position += QVector3D(differenceX, differenceY, 0);
     mLastMousePosition = event->globalPosition().toPoint();
+    framing3D.setPosition(position);
+    renderData->setFraming3D(framing3D);
     updateRendering();
     event->accept();
   }

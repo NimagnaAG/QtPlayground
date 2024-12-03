@@ -43,6 +43,7 @@ class RENDERING_API RenderObjectManager final : public QObject {
   }
 
   void addTextureObject(const QString& filename);
+  void addGltfObject(const QString& filename);
 
   const RenderObjectList& renderObjects() const;
   const RenderObjectList& activeRenderObjects() const;

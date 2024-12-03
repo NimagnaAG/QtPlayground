@@ -3,5 +3,8 @@
 		<file>resources/shaders/texture_2d.frag</file>
 		<file>resources/shaders/texture_rectangle.frag</file>
 		<file>resources/shaders/texture.vert</file>
+		<file>resources/shaders/simple_red.frag</file>
+		<file>resources/shaders/gltf.frag</file>
+		<file>resources/shaders/gltf.vert</file>
 	</qresource>
 </RCC>

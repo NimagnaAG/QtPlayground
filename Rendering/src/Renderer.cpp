@@ -56,6 +56,7 @@ void RenderWorker::loadGLTF(QString filename) {
   SPDLOG_INFO("Load GLTF called");
   if (!mRenderObjectManager) return;
 
+  mRenderObjectManager->addGltfObject(filename);
   SPDLOG_INFO("A GLTF Should be displayed now..: " + filename);
   // add gltf viewer / loader here
 }

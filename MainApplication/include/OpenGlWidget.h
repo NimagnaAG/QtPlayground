@@ -5,7 +5,6 @@
 
 #include "Rendering/Renderer.h"
 #include "Rendering/TextureRenderObject.h"
-#include <Rendering/tiny_gltf.h>
 
 namespace nimagna {
 
@@ -25,13 +24,6 @@ class OpenGlWidget : public QOpenGLWidget, protected QOpenGLFunctions_4_0_Core {
   // set the RenderObjectManager
   void setRenderer(std::shared_ptr<Renderer> renderer);
   void enableTrackball(bool enabled);
-  void processModel(const tinygltf::Model& model);
-  void renderModel();
-  //std::vector<QOpenGLVertexArrayObject> mVAOs;
-  std::vector<std::unique_ptr<QOpenGLVertexArrayObject>> mVAOs; 
-  std::vector<int> mIndexCounts;  // Add this line
-  QMatrix4x4 mTransformMatrix;
-  void loadTexture(const QString& filePath);
 
  signals:
   void initialized();
