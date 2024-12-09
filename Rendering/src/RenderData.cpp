@@ -110,7 +110,7 @@ QMatrix4x4 RenderData::projectionMatrix() const {
     QMatrix4x4 proj;
     const float aspectRatio = 1.0f;
     const float nearPlane = 0.1f;
-    const float farPlane = 100.f;
+    const float farPlane = 0.1f;
     proj.perspective(framing.fieldOfViewAngle(), aspectRatio, nearPlane, farPlane);
     projM = proj * view;
   }

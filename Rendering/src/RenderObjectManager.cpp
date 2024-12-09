@@ -121,30 +121,50 @@ bool RenderObjectManager::render() {
     mRenderFramebuffer->bind();
   }
 
-  glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
-  glClear(GL_COLOR_BUFFER_BIT);
-  glEnable(GL_BLEND);
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glDepthMask(GL_TRUE);
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
+    glEnable(GL_FRAMEBUFFER_SRGB);
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+    glFrontFace(GL_CCW);
+    glDepthRange(0.0, 1.0);
+
 
   // render objects only if there's render data for the projection and the list has more than one
   // object (i.e. storyboard + more) or the storyboard is the only item and has content
   if (mCurrentRenderData && (mRenderObjectsList.size() > 0)) {
     // get projection from shot
-    const QMatrix4x4 projectionMatrix = mCurrentRenderData->projectionMatrix();
+   // const QMatrix4x4 projectionMatrix = mCurrentRenderData->projectionMatrix();
     for (const auto& renderObject : mRenderObjectsList) {
-      renderObject->prepare(projectionMatrix);
+     // renderObject->prepare(projectionMatrix);
       renderObject->draw();
     }
   }
 
-  if (multisamplingRendering) {
-    // blit the multisampling framebuffer to the render framebuffer
+if (multisamplingRendering) {
+    // Blit the multisampling framebuffer to the render framebuffer
     QOpenGLFramebufferObject::blitFramebuffer(
-        mRenderFramebuffer.get(), mMultisampleFramebuffer.get(), GL_COLOR_BUFFER_BIT, GL_LINEAR);
+        mRenderFramebuffer.get(), mMultisampleFramebuffer.get(), GL_COLOR_BUFFER_BIT,
+        GL_LINEAR);  // Blit color buffer with linear filtering
+
+    QOpenGLFramebufferObject::blitFramebuffer(
+        mRenderFramebuffer.get(), mMultisampleFramebuffer.get(), GL_DEPTH_BUFFER_BIT,
+        GL_NEAREST);  // Blit depth buffer with nearest filtering
   }
 
   glFlush();
   mRenderFramebuffer->bindDefault();
+
+      GLenum error = glGetError();
+  if (error != GL_NO_ERROR) {
+    SPDLOG_ERROR("OpenGL error: {}", error);
+  }
+
   return true;
 }
 
@@ -173,7 +193,7 @@ void RenderObjectManager::addTextureObject(const QString& filename) {
 
 void RenderObjectManager::addGltfObject(const QString& filename) {
   std::shared_ptr<GltfRenderObject> renderObject =
-      std::make_shared<GltfRenderObject>(GltfRenderObject::kDefaultTextureTarget);
+      std::make_shared<GltfRenderObject>(GltfRenderObject::kDefaultTextureTarget, filename);
   renderObject->setDisplayName(filename);
 
   // add object to data structure
@@ -186,7 +206,7 @@ void RenderObjectManager::onOutputSettingsChanged() {
 
   // update render frame buffers (MSAA and texture), local storage and viewport
   QOpenGLFramebufferObjectFormat fboMultisamplingFormat;
-  fboMultisamplingFormat.setAttachment(QOpenGLFramebufferObject::Attachment::NoAttachment);
+  fboMultisamplingFormat.setAttachment(QOpenGLFramebufferObject::Depth);
   fboMultisamplingFormat.setMipmap(true);
   fboMultisamplingFormat.setSamples(8);
   fboMultisamplingFormat.setInternalTextureFormat(GL_RGBA8);

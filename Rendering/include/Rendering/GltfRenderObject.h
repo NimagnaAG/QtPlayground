@@ -31,7 +31,7 @@ class RENDERING_API GltfRenderObject : public RenderObject, protected QOpenGLFun
 
   GltfRenderObject() = delete;
   GltfRenderObject(TextureTarget type);
-  GltfRenderObject(TextureTarget type, const QImage& texture);
+  GltfRenderObject(TextureTarget type, const QString& texture);
   // not copyable or movable
   GltfRenderObject(const GltfRenderObject& other) = delete;
   GltfRenderObject& operator=(const GltfRenderObject& other) = delete;
@@ -44,6 +44,7 @@ class RENDERING_API GltfRenderObject : public RenderObject, protected QOpenGLFun
 
   // process gltf model
   void processModel(const tinygltf::Model& model);
+  void loadTextures(const tinygltf::Model& model);
 
   // draws the render object.
   virtual void draw() override;
@@ -54,7 +55,6 @@ class RENDERING_API GltfRenderObject : public RenderObject, protected QOpenGLFun
   // an external texture is bound during rendering and does not bind its own texture(s).
   virtual void useExternalTexture(bool useExternal);
   // checks if the render object is visible on the screen
-  bool isVisible() const;
 
   // the texture's source size
   const QSize& textureSourceSize() const;
@@ -82,19 +82,8 @@ class RENDERING_API GltfRenderObject : public RenderObject, protected QOpenGLFun
 
   // uploads the VertexData to GPU. Must be called after changing mVBD data
   void uploadVertexData();
-  // change the texture size and format
-  virtual void changeTextureSizeAndFormat(QSize size, SourcePixelFormat pixelFormat);
   // change the mask size
-  virtual void changeMaskSize(QSize size);
-
-  // flip vertically
-  void setFlipVertically(bool flipVertically);
-  // mirror horizontally
-  void setFlipHorizontally(bool flipHorizontally);
-  // update the texture data
-  void setTextureData(const QImage& image);
   // update the mask texture data
-  void setMaskTextureData(const QImage& image);
   // set the position of a particular vertex. does not upload the data to the GPU -> call
   // uploadVertexData after changing the vertex data
   void setVertexPosition(int vertexId, int index, float value);
@@ -113,10 +102,6 @@ class RENDERING_API GltfRenderObject : public RenderObject, protected QOpenGLFun
   // initialize the shader program
   void setupShaderProgram();
   // updates the texture coordinates if size has changed or flip flag has changed
-  void updateTextureCoordinates();
-  // updates the mask's texture coordinates if size has changed or flip flag has changed
-  void updateMaskTextureCoordinates();
-
   QMutex mAccessMutex;
 
   // helpers related to the texture target
@@ -189,20 +174,16 @@ class RENDERING_API GltfRenderObject : public RenderObject, protected QOpenGLFun
   // get next multiple of four number
   static int nextMultipleOfFour(int input);
 
-  // calculates the vertex positions of a textured rectangle
-  // returns left, top, right, bottom, width, height (the latter two for convenience)
-  // normally, this is [-1,-1,1,1,2,2] but if the texture width/height are not 16/9, the vertices
-  // must be adapted
-  // Note that this coordinate system has x from left to right and y from bottom to top
-  static std::array<float, 6> textureVertexPositions(const QSize& textureSize);
-
   //void renderModel();
   // std::vector<QOpenGLVertexArrayObject> mVAOs;
   std::vector<std::unique_ptr<QOpenGLVertexArrayObject>> mVAOs;
   std::vector<int> mIndexCounts;  // Add this line
   QMatrix4x4 mTransformMatrix;
+  QMatrix4x4 mProjectionMatrix;
   GLuint mTextureID = 5;
+  std::vector<GLuint> mTextureIDs;
   float mRotationAngle = 0.0f;  // Rotation angle
+  QString mGltfLocation = "";
 };
 
 }  // namespace nimagna

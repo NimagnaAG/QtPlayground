@@ -127,8 +127,8 @@ void OpenGlWidget::resizeGL(int w, int h) {
   QOpenGLWidget::resizeGL(w, h);
 }
 
-void OpenGlWidget::keyPressEvent(QKeyEvent* event) {
-  if (event->key() == Qt::Key_Shift) {
+void OpenGlWidget::keyPressEvent(QKeyEvent* event) { 
+    if (event->key() == Qt::Key_Shift) {
     mShiftKeyDown = true;
   }
   const float stepLength = 0.1f;
