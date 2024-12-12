@@ -11,6 +11,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <Rendering/tiny_gltf.h>
+#include<cmath>
 
 namespace nimagna {
 
@@ -24,7 +25,6 @@ namespace nimagna {
 
 GltfRenderObject::GltfRenderObject(TextureTarget type) : mTextureTarget(type) {
     enableSeparateMask(false, false);
-    //initialize();
   }
 
 GltfRenderObject::GltfRenderObject(TextureTarget type, const QString& location)
@@ -32,11 +32,6 @@ GltfRenderObject::GltfRenderObject(TextureTarget type, const QString& location)
   //enableSeparateMask(false, false);
     mGltfLocation = location;
     initialize();
-
- // setTextureData(texture);
- // setMaskTextureData(texture);
-
-
 }
 
 GltfRenderObject::~GltfRenderObject() {
@@ -57,15 +52,11 @@ void GltfRenderObject::initialize() {
   const float aspectRatio = 1.0f;
   const float nearPlane = 0.01f;
   const float farPlane = 1000.f;
-  //mProjectionMatrix.perspective(90, aspectRatio, nearPlane, farPlane);
-  mProjectionMatrix.ortho(-1.0f, 1.0f, -1.0f, 1.0f, nearPlane, farPlane);
+ 
+  mProjectionMatrix.perspective(90, aspectRatio, nearPlane, farPlane);
+  //mProjectionMatrix.ortho(-1.0f, 1.0f, -1.0f, 1.0f, nearPlane, farPlane);
   SPDLOG_INFO("Projection matrix setup");
 
-  //glEnable(GL_POLYGON_OFFSET_FILL);
-  //glPolygonOffset(1.0f, 1.0f);
-
-
-  //SPDLOG_DEBUG("Initializing GltfRenderObject");
   SPDLOG_INFO("Initializing GltfRenderObject with location: " + mGltfLocation.toStdString());
 
   tinygltf::Model model;
@@ -73,8 +64,6 @@ void GltfRenderObject::initialize() {
   std::string err;
   std::string warn;
 
- // bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, mGltfLocation.toStdString());
-  //bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, "D:/git/glTF-Sample-Models/2.0/BoomBox/glTF/BoomBox.gltf");
   bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, mGltfLocation.toStdString());
   if (!warn.empty()) {
     SPDLOG_WARN("GLTF Warning: {}", warn);
@@ -108,25 +97,6 @@ void GltfRenderObject::initialize() {
     SPDLOG_ERROR("No textures found in the model.");
     return;
   }
-
-  /*
-
-  const tinygltf::Texture& texture = model.textures[0];
-  const tinygltf::Image& image = model.images[texture.source];
-
-  glGenTextures(1, &mTextureID);
-  glBindTexture(GL_TEXTURE_2D, mTextureID);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image.width, image.height, 0, GL_RGBA, GL_UNSIGNED_BYTE,
-               image.image.data());
-  glGenerateMipmap(GL_TEXTURE_2D);
-
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-  glBindTexture(GL_TEXTURE_2D, 0);
-  */
 
   loadTextures(model);
 
@@ -171,115 +141,6 @@ struct Vertex {
 std::vector<Vertex> vertices;
 std::vector<GLuint> indices;
 
-
-/*
-
-void GltfRenderObject::processModel(const tinygltf::Model& model) {
-  float scaleFactor = 1.0f;  // Scale factor
-
-  for (const auto& mesh : model.meshes) {
-    for (const auto& primitive : mesh.primitives) {
-      // Create and bind Vertex Array Object (VAO)
-      auto vao = std::make_unique<QOpenGLVertexArrayObject>();
-      if (!vao->create()) {
-        SPDLOG_ERROR("Failed to create VertexArrayObject");
-        continue;
-      }
-      vao->bind();
-
-      // Create and bind Vertex Buffer Object (VBO)
-      QOpenGLBuffer vbo(QOpenGLBuffer::VertexBuffer);
-      if (!vbo.create()) {
-        SPDLOG_ERROR("Failed to create VertexBufferObject");
-        continue;
-      }
-      vbo.setUsagePattern(QOpenGLBuffer::StaticDraw);
-
-      // Extract positions, normals, and texCoords
-      const tinygltf::Accessor& posAccessor =
-          model.accessors[primitive.attributes.find("POSITION")->second];
-      const tinygltf::BufferView& posView = model.bufferViews[posAccessor.bufferView];
-      const tinygltf::Buffer& posBuffer = model.buffers[posView.buffer];
-      const float* normals = nullptr;
-
-      auto normalIt = primitive.attributes.find("NORMAL"); // Some models might not have normals
-      if (normalIt != primitive.attributes.end()) { 
-          const tinygltf::Accessor& normAccessor =
-              model.accessors[primitive.attributes.find("NORMAL")->second];
-          const tinygltf::BufferView& normView = model.bufferViews[normAccessor.bufferView];
-          const tinygltf::Buffer& normBuffer = model.buffers[normView.buffer];
-          normals = reinterpret_cast<const float*>(
-              &normBuffer.data[normView.byteOffset + normAccessor.byteOffset]);
-      }
-
-      const tinygltf::Accessor& texAccessor =
-          model.accessors[primitive.attributes.find("TEXCOORD_0")->second];
-      const tinygltf::BufferView& texView = model.bufferViews[texAccessor.bufferView];
-      const tinygltf::Buffer& texBuffer = model.buffers[texView.buffer];
-
-      const float* positions = reinterpret_cast<const float*>(
-          &posBuffer.data[posView.byteOffset + posAccessor.byteOffset]);
-      const float* texCoords = reinterpret_cast<const float*>(
-          &texBuffer.data[texView.byteOffset + texAccessor.byteOffset]);
-
-      for (size_t i = 0; i < posAccessor.count; ++i) {
-        Vertex vertex;
-        vertex.position =
-            QVector3D(positions[i * 3] * scaleFactor, positions[i * 3 + 1] * scaleFactor,
-                      positions[i * 3 + 2] * scaleFactor);
-
-         if (normals) {
-          vertex.normal = QVector3D(normals[i * 3], normals[i * 3 + 1], normals[i * 3 + 2]);
-        } else {
-          vertex.normal = QVector3D(0.0f, 0.0f, 0.0f);  // Default normal if not present
-        }
-        vertex.texCoords = QVector2D(texCoords[i * 2], texCoords[i * 2 + 1]);
-        vertices.push_back(vertex);
-      }      
-
-      vbo.bind();
-      vbo.allocate(vertices.data(), static_cast<int>(vertices.size() * sizeof(Vertex)));
-
-      // Set up vertex attribute pointers
-      glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position));
-      glEnableVertexAttribArray(0);
-
-      glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
-      glEnableVertexAttribArray(1);
-
-      glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex),(void*)offsetof(Vertex, texCoords));
-      glEnableVertexAttribArray(2);
-
-      // Create and bind Index Buffer Object (EBO) if it exists
-      QOpenGLBuffer ebo(QOpenGLBuffer::IndexBuffer);
-      int indexCount = 0;
-      if (primitive.indices >= 0) {
-        const tinygltf::Accessor& indexAccessor = model.accessors[primitive.indices];
-        const tinygltf::BufferView& indexView = model.bufferViews[indexAccessor.bufferView];
-        const tinygltf::Buffer& indexBuffer = model.buffers[indexView.buffer];
-
-        if (!ebo.create()) {
-          SPDLOG_ERROR("Failed to create IndexBufferObject");
-          continue;
-        }
-        ebo.setUsagePattern(QOpenGLBuffer::StaticDraw);
-        ebo.bind();
-        ebo.allocate(&indexBuffer.data[indexView.byteOffset + indexAccessor.byteOffset],
-                     static_cast<int>(indexAccessor.count * sizeof(unsigned short)));
-
-        indexCount = static_cast<int>(indexAccessor.count);  // Store the index count
-      }
-
-      // Unbind VAO
-      vao->release();
-
-      // Store the VAO and index count for rendering later
-      mVAOs.push_back(std::move(vao));
-      mIndexCounts.push_back(indexCount);
-    }
-  }
-}
-*/
 
 void GltfRenderObject::processModel(const tinygltf::Model& model) {
   float scaleFactor = 1.0f;  // Scale factor
