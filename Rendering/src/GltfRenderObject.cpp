@@ -143,11 +143,11 @@ std::vector<GLuint> indices;
 
 
 void GltfRenderObject::processModel(const tinygltf::Model& model) {
-  float scaleFactor = 1.0f;  // Scale factor
+  float scaleFactor = 1.0f; // its better to adjust projection in draw method
 
   for (const auto& mesh : model.meshes) {
       for (const auto& primitive : mesh.primitives) {
-        // Create and bind Vertex Array Object (VAO)
+
         auto vao = std::make_unique<QOpenGLVertexArrayObject>();
         if (!vao->create()) {
           SPDLOG_ERROR("Failed to create VertexArrayObject");
@@ -155,7 +155,6 @@ void GltfRenderObject::processModel(const tinygltf::Model& model) {
         }
         vao->bind();
 
-        // Create and bind Vertex Buffer Object (VBO)
         QOpenGLBuffer vbo(QOpenGLBuffer::VertexBuffer);
         if (!vbo.create()) {
           SPDLOG_ERROR("Failed to create VertexBufferObject");
@@ -333,19 +332,15 @@ void GltfRenderObject::draw() {
     SPDLOG_ERROR("Shader program is not available.");
     return;
    }
-   //glClear(GL_DEPTH_BUFFER_BIT);
-   //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
    mShaderProgram->bind();
 
-   // Update the rotation angle
-   mRotationAngle += 0.5f;  // Adjust the speed of rotation as needed
+   mRotationAngle += 0.5f;  // Adjust the speed of rotation as needed, framerate dependant atm
 
    // Create the model matrix with rotation
    QMatrix4x4 modelMatrix;
-   //modelMatrix.rotate(mRotationAngle, QVector3D(1.0f, 0.0f, 0.0f));  // Rotate around the Y-axis
-   modelMatrix.rotate(260.0f, QVector3D(1.0f, 0.0f, 0.0f));          // can
-   modelMatrix.rotate(mRotationAngle, QVector3D(0.0f, 0.2f, 1.0f));  // can
-   //modelMatrix.rotate(175.0f, QVector3D(1.0f, 0.0f, 0.0f));  // for interaction sapce
+   modelMatrix.rotate(260.0f, QVector3D(1.0f, 0.0f, 0.0f));          // for Pepsi
+   modelMatrix.rotate(mRotationAngle, QVector3D(0.0f, 0.2f, 1.0f));  // for Pepsi
+   //modelMatrix.rotate(175.0f, QVector3D(1.0f, 0.0f, 0.0f));  // for interaction space
 
 
    float time = mRotationAngle;
@@ -356,12 +351,11 @@ void GltfRenderObject::draw() {
    float t = getLoopingValue(time, duration);
    float interpolatedValue = interpolate(start, end, t);
 
-   //modelMatrix.rotate(interpolatedValue, QVector3D(0.0f, 1.0f, 0.0f));  // for interaction sapce
+   //modelMatrix.rotate(interpolatedValue, QVector3D(0.0f, 1.0f, 0.0f));  // for interaction space
 
 
-   // Set the model, view, and projection matrices
-   QMatrix4x4 viewMatrix;  // Set this to your view matrix
-   viewMatrix.translate(0.0f, 0.5f, -2.5f); // can
+   QMatrix4x4 viewMatrix;
+   viewMatrix.translate(0.0f, 0.5f, -2.5f); // for Pepsi
   // viewMatrix.translate(0.0f, 0.5f, -0.5f); // for interaction sapce
 
    mShaderProgram->setUniformValue("model", modelMatrix);
