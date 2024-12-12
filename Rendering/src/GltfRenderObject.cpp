@@ -481,12 +481,27 @@ void GltfRenderObject::draw() {
 
    // Create the model matrix with rotation
    QMatrix4x4 modelMatrix;
-   modelMatrix.rotate(mRotationAngle, QVector3D(1.0f, 1.0f, 0.0f));  // Rotate around the Y-axis
-   //modelMatrix.rotate(45.0f, QVector3D(1.0f, 1.0f, 0.0f));  
+   //modelMatrix.rotate(mRotationAngle, QVector3D(1.0f, 0.0f, 0.0f));  // Rotate around the Y-axis
+   modelMatrix.rotate(260.0f, QVector3D(1.0f, 0.0f, 0.0f));          // can
+   modelMatrix.rotate(mRotationAngle, QVector3D(0.0f, 0.2f, 1.0f));  // can
+   //modelMatrix.rotate(175.0f, QVector3D(1.0f, 0.0f, 0.0f));  // for interaction sapce
+
+
+   float time = mRotationAngle;
+   float start = 1.0f;
+   float end = 60.0f;
+   float duration = 300.0f;  // Duration of one loop cycle
+
+   float t = getLoopingValue(time, duration);
+   float interpolatedValue = interpolate(start, end, t);
+
+   //modelMatrix.rotate(interpolatedValue, QVector3D(0.0f, 1.0f, 0.0f));  // for interaction sapce
+
 
    // Set the model, view, and projection matrices
    QMatrix4x4 viewMatrix;  // Set this to your view matrix
-   viewMatrix.translate(0.0f, 0.0f, -20.0f);
+   viewMatrix.translate(0.0f, 0.5f, -2.5f); // can
+  // viewMatrix.translate(0.0f, 0.5f, -0.5f); // for interaction sapce
 
    mShaderProgram->setUniformValue("model", modelMatrix);
    mShaderProgram->setUniformValue("view", viewMatrix);
@@ -613,5 +628,16 @@ const GLint GltfRenderObject::glSourceFormat() const {
 
 QImage::Format GltfRenderObject::qImageFormatFromSourcePixelFormat(SourcePixelFormat format) {
   return kSourcePixelFormatToQImageFormatMap.at(format);
+}
+
+
+float GltfRenderObject::interpolate(float start, float end, float t) {
+  return start + t * (end - start);
+}
+
+// Function to get a looping interpolation value
+float GltfRenderObject::getLoopingValue(float time, float duration) {
+  float phase = fmod(time, duration) / duration;                  // Normalize time to [0, 1]
+  return 0.5f * (1.0f + sin(2.0f * M_PI * phase - M_PI / 2.0f));  // Sine wave from 0 to 1
 }
 }  // namespace nimagna

@@ -184,6 +184,8 @@ class RENDERING_API GltfRenderObject : public RenderObject, protected QOpenGLFun
   std::vector<GLuint> mTextureIDs;
   float mRotationAngle = 0.0f;  // Rotation angle
   QString mGltfLocation = "";
+  float interpolate(float start, float end, float t);
+  float getLoopingValue(float time, float duration);
 };
 
 }  // namespace nimagna
