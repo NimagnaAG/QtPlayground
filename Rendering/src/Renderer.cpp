@@ -60,6 +60,12 @@ void RenderWorker::loadGLTF(QString filename) {
   SPDLOG_INFO("A GLTF Should be displayed now..: " + filename);
   // add gltf viewer / loader here
 }
+  // loads a GS / video
+void RenderWorker::loadGS(QString filename){
+   if (!mRenderObjectManager) return; 
+  mRenderObjectManager->addGsObject(filename);
+  SPDLOG_INFO("A Gaussian Splat Should be displayed now..: " + filename);
+}
 
 void RenderWorker::render() {
   // slot called by the timer to trigger a render iteration
@@ -99,6 +105,7 @@ Renderer::Renderer() {
   connect(this, &Renderer::stopRenderer, mRenderWorker.get(), &RenderWorker::stopRendering);
   connect(this, &Renderer::loadImage, mRenderWorker.get(), &RenderWorker::loadImage);
   connect(this, &Renderer::loadGLTF, mRenderWorker.get(), &RenderWorker::loadGLTF);
+  connect(this, &Renderer::loadGS, mRenderWorker.get(), &RenderWorker::loadGS);
   connect(mRenderWorker.get(), &RenderWorker::renderFrameReady, this,
           &Renderer::renderFrameUpdated);
 

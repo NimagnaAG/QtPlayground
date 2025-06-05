@@ -6,7 +6,7 @@
 #include <QtGui/QPainter>
 #include <QtOpenGL/QOpenGLPaintDevice>
 #include <Rendering/GltfRenderObject.h>
-
+#include <Rendering/GsRenderObject.h>
 namespace nimagna {
 
 RenderObjectManager::RenderObjectManager() {
@@ -199,6 +199,15 @@ void RenderObjectManager::addGltfObject(const QString& filename) {
   // add object to data structure
   mRenderObjectsList.emplace_back(renderObject);
 }
+void RenderObjectManager::addGsObject(const QString& filename) {
+  std::shared_ptr<GsRenderObject> renderObject =
+      std::make_shared<GsRenderObject>(GsRenderObject::kDefaultTextureTarget, filename);
+  renderObject->setDisplayName(filename);
+
+  // add object to data structure
+  mRenderObjectsList.emplace_back(renderObject);
+}
+
 
 void RenderObjectManager::onOutputSettingsChanged() {
   tryMakeOpenGlContextCurrent(false);

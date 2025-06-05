@@ -36,15 +36,24 @@ void MainWindow::on_actionLoad_triggered() {
 
 void MainWindow::on_test_triggered() {
   SPDLOG_INFO("User action: test");
-  const QString fileName =
-      QFileDialog::getOpenFileName(this, tr("Open Show"), "", tr("GLTF (*.gltf;*.png)"));
+  const QString fileName = QFileDialog::getOpenFileName(this, tr("Open Show"), "", tr("GLTF (*.gltf;*.png)"));
   SPDLOG_INFO("Filename action: " + fileName);
   if (!fileName.isNull()) {
     // not canceled
     mRenderer->loadGLTF(fileName);
   }
+  
 }
-
+void MainWindow::on_GsLoad_triggered() {
+  SPDLOG_INFO("User action: Load Gaussian Splat Video");
+  const QString fileName = QFileDialog::getOpenFileName(this, tr("Open Show"), "", tr("V-splat (*.vsplat;*.splat;*.ply)"));
+  SPDLOG_INFO("Filename action: " + fileName);
+  if (!fileName.isNull()) {
+    // not canceled
+    mRenderer->loadGS(fileName);
+  }
+  
+}  
 void MainWindow::onOpenGlWidgetInitialized() const {
   mRenderer->start(mUI.openGLWidget->context());
   mUI.openGLWidget->update();

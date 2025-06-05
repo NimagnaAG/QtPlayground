@@ -29,7 +29,8 @@ set(Header_Files
     "include/Rendering/stb_image.h"
     "include/Rendering/stb_image_write.h"
     "include/Rendering/json.hpp"
-    "include/Rendering/GltfRenderObject.h"
+    "include/Rendering/GltfRenderObject.h" 
+    "include/Rendering/GsRenderObject.h"
 )
 source_group("Header Files" FILES ${Header_Files})
 
@@ -39,8 +40,10 @@ set(Source_Files
     "src/RenderObject.cpp"
     "src/RenderData.cpp"
     "src/RenderObjectManager.cpp"
-    "src/TextureRenderObject.cpp"
+    "src/TextureRenderObject.cpp" 
+    "src/GsRenderObject.cpp" 
     "src/GltfRenderObject.cpp"
+
 )
 source_group("Source Files" FILES ${Source_Files})
 
