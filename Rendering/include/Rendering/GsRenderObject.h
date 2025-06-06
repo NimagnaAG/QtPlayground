@@ -18,7 +18,9 @@
 #include <limits>
 #include <vector> 
 #include "RenderObject.h"
-#include "Rendering/Rendering.h"
+#include "Rendering/Rendering.h" 
+#include "Renderer.h"
+
 namespace nimagna { 
 class RENDERING_API GsRenderObject : public RenderObject, protected QOpenGLFunctions_4_0_Core {
   Q_OBJECT
@@ -38,7 +40,7 @@ class RENDERING_API GsRenderObject : public RenderObject, protected QOpenGLFunct
   };
 
   GsRenderObject() = delete;
-  GsRenderObject(const QString& location);
+  GsRenderObject(const QString& location, QRect mvp);
   // not copyable or movable
   GsRenderObject(const GsRenderObject& other) = delete;
   GsRenderObject& operator=(const GsRenderObject& other) = delete;
@@ -50,6 +52,7 @@ class RENDERING_API GsRenderObject : public RenderObject, protected QOpenGLFunct
   }
   void LoadSplatGs(const QString& location);
   void LoadAnimateGs(const QString& location);
+  void LoadGaussianCloud(const QString& location){}
   // initializes the render object.
   virtual void initialize() override;
   // draws the render object.
@@ -57,22 +60,21 @@ class RENDERING_API GsRenderObject : public RenderObject, protected QOpenGLFunct
   // initialize the shader program
   void setupShaderProgram();
   void resizeGL(int w, int h);
-  QVector<uint32_t> RunSort(QByteArray buffer);
+  void RunSort(QByteArray buffer);
   QVector<quint32> generateTexture(QByteArray buffer);
  protected:
   static const inline QString mVertexShaderFile = ":/resources/shaders/AnimateGS.vert";
   static const inline QString mFragmentShaderFile = ":/resources/shaders/AnimateGS.frag";
   std::unique_ptr<QOpenGLShaderProgram> mShaderProgram;
   QString mGsLocation = "";
-
+  
   Camera m_camera;
   int vertexCount = 0;
   int LastVertexCount = -1;
-  QMatrix4x4 viewProj;
-  QMatrix4x4 lastProj;
-
+  QMatrix4x4 viewProj, lastProj;
+  QMatrix4x4 viewMatrix, mProjectionMatrix;
   GLint m_aPositionLoc, m_aIndexLoc;
- 
+  std::shared_ptr<Renderer> mRenderer;  // Add this member
   QVector<quint32> mTextureData;
   float mDownsample; 
   std::unique_ptr<QOpenGLTexture> mTexture;
@@ -82,7 +84,7 @@ class RENDERING_API GsRenderObject : public RenderObject, protected QOpenGLFunct
   QOpenGLBuffer mVBO;
   // the index buffer with the vertex indices for each triangle
   QOpenGLBuffer mIBO;
- 
+  QRect mViewPort; 
 
     quint16 floatToHalf(float value) {
     // Use built-in half if available (Qt 6.6+) or implement manually.

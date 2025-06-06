@@ -201,7 +201,7 @@ void RenderObjectManager::addGltfObject(const QString& filename) {
 }
 void RenderObjectManager::addGsObject(const QString& filename) {
   std::shared_ptr<GsRenderObject> renderObject =
-      std::make_shared<GsRenderObject>(GsRenderObject::kDefaultTextureTarget, filename);
+      std::make_shared<GsRenderObject>(filename, mContext->screen()->geometry());
   renderObject->setDisplayName(filename);
 
   // add object to data structure
