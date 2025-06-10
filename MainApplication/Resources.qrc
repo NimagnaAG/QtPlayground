@@ -7,6 +7,8 @@
 		<file>resources/shaders/gltf.frag</file>
 		<file>resources/shaders/gltf.vert</file>
 		<file>resources/shaders/AnimateGS.frag</file>
-		<file>resources/shaders/AnimateGS.vert</file>
+		<file>resources/shaders/AnimateGS2.frag</file>
+		<file>resources/shaders/AnimateGS.vert</file> 
+		<file>resources/shaders/AnimateGS2.vert</file>
 	</qresource>
 </RCC>

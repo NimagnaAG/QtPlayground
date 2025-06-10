@@ -63,7 +63,7 @@ class RENDERING_API GsRenderObject : public RenderObject, protected QOpenGLFunct
   void setupShaderProgram();
   void resizeGL(int w, int h);
   void RunSort( );
-  QVector<quint32> generateTexture(QByteArray buffer); 
+  QVector<quint32> generateTexture( ); 
  protected:
   OpenGlWidget* m_glw = nullptr;
   static const inline QString mVertexShaderFile = ":/resources/shaders/AnimateGS.vert";

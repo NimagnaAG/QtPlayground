@@ -1,4 +1,4 @@
-#version 400
+#version 420
 
 layout(location = 0) in vec2 position;
 layout(location = 1) in int index;
@@ -7,10 +7,7 @@ uniform usampler2D u_texture;
 uniform mat4 projection, view;
 uniform vec2 focal;
 uniform vec2 viewport;
-
-in vec2 position;
-in int index;
-
+  
 out vec4 vColor;
 out vec2 vPosition;
 

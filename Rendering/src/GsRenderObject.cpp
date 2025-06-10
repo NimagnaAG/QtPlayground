@@ -23,10 +23,10 @@
 
 namespace nimagna {
 
-GsRenderObject::GsRenderObject(const QString& location, QRect mvp)  {
+GsRenderObject::GsRenderObject(const QString& location, QRect mvp) {
   // enableSeparateMask(false, false);
-  mGsLocation = location; 
-    
+  mGsLocation = location;
+
   mViewPort = mvp;
   m_camera.id = 0;
   m_camera.img_name = "00001";
@@ -39,11 +39,12 @@ GsRenderObject::GsRenderObject(const QString& location, QRect mvp)  {
                              -0.04747421839895102f, 0.9972110940209488f, -0.057586739349882114f,
                              -0.4797239414934443f, 0.027805376500959853f, 0.8769787916452908f});
   m_camera.fy = 1164.6601287484507f;
-  m_camera.fx = 1159.5880733038064f; 
+  m_camera.fx = 1159.5880733038064f;
   viewMatrix = QMatrix4x4(new float[]{0.47f, 0.04f, 0.88f, 0, -0.11f, 0.99f, 0.02f, 0, -0.88f,
                                       -0.11f, 0.47f, 0, 0.07f, 0.03f, 6.55f, 1});
-  mProjectionMatrix = getProjectionMatrix(m_camera.fx, m_camera.fy, mViewPort.width(), mViewPort.height());
-  viewMatrix.translate(m_camera.position);    // Adds the translation
+  mProjectionMatrix =
+      getProjectionMatrix(m_camera.fx, m_camera.fy, mViewPort.width(), mViewPort.height());
+  viewMatrix.translate(m_camera.position);  // Adds the translation
   initialize();
   setupShaderProgram();
 
@@ -56,11 +57,16 @@ void GsRenderObject::initialize() {
 
   setupShaderProgram();
   QString fileExtension = mGsLocation.split(".").last();
-  if (fileExtension == "splat") LoadSplatGs(mGsLocation);
-  if (fileExtension == "vsplat")
+  QString splatExt = QString("splat");
+  if (fileExtension.contains(splatExt)) LoadSplatGs(mGsLocation);
+  if (fileExtension.contains("vsplat"))
     LoadAnimateGs(mGsLocation);
-  else if (fileExtension == "ply")
+  else if (fileExtension.contains("ply"))
     LoadGaussianCloud(mGsLocation);
+  else {
+    LoadSplatGs(mGsLocation);
+    SPDLOG_ERROR("file extension wrong:{} ", fileExtension.toStdString());
+  }
   // Done
   RenderObject::initialize();
 }
@@ -78,46 +84,41 @@ void GsRenderObject::LoadSplatGs(const QString& location) {
   vertexCount = buffer.size() / rowLength;
 
   // Create and configure VAO
-  if (mVAO.create()) {
-    mVAO.bind();
-    if (!mVAO.isCreated()) {
-      SPDLOG_DEBUG("Creating VertexArrayObject");
-      mVAO.create();
-    }
 
-    mVBO = QOpenGLBuffer(QOpenGLBuffer::VertexBuffer);
-    if (!mVBO.create()) {
-      SPDLOG_ERROR("Failed to create VertexBufferObject");
-    }
-    mVBO.bind();
-    const float triangleVertices[] = {-2, -2, 2, -2, 2, 2, -2, 2};  // 4 vertices, 2 components each
-    mVBO.allocate(triangleVertices, sizeof(triangleVertices));
-    // mShaderProgram->setUniformValue("view", viewMatrix);
-    m_aPositionLoc = mShaderProgram->attributeLocation("position");
-    mShaderProgram->enableAttributeArray(m_aPositionLoc);
-    mShaderProgram->setAttributeBuffer(m_aPositionLoc, GL_FLOAT, 0, 2, 0);
-    // mVBO.release();
-    // VAO setup (replaces some of the repeated bindBuffer/vertexAttribPointer calls)
-    mTexture = std::make_unique<QOpenGLTexture>(QOpenGLTexture::Target2D);
-    // mTexture = std::make_unique<QOpenGLTexture>(qGlTarget());
-    if (!mTexture->create()) {
-      SPDLOG_ERROR("Unable to create texture");
-      assert(false);
-    }
-    // mTexture = new QOpenGLTexture(QOpenGLTexture::Target2D);
-    mTexture->bind();  // bind to GL_TEXTURE_2D automatically
-    mTexture->setMinMagFilters(QOpenGLTexture::Nearest, QOpenGLTexture::Nearest);
-    mTexture->setWrapMode(QOpenGLTexture::ClampToEdge);
-
-    mShaderProgram->setUniformValue("u_texture", 0);  // Activate texture unit
-
-    RunSort( );
-
-  } else {
-    SPDLOG_ERROR("Failed to create VAO.");
-    return;
+  if (!mVAO.isCreated()) {
+    SPDLOG_DEBUG("Creating VertexArrayObject");
+    mVAO.create();
   }
+  mVAO.bind();
+  mVBO = QOpenGLBuffer(QOpenGLBuffer::VertexBuffer);
+  if (!mVBO.create()) {
+    SPDLOG_ERROR("Failed to create VertexBufferObject");
+  }
+  mVBO.bind();
+  const float triangleVertices[] = {-2, -2, 2, -2, 2, 2, -2, 2};  // 4 vertices, 2 components each
+  mVBO.allocate(triangleVertices, sizeof(triangleVertices));
+  // mShaderProgram->setUniformValue("view", viewMatrix);
+  m_aPositionLoc = mShaderProgram->attributeLocation("position");
+  mShaderProgram->enableAttributeArray(m_aPositionLoc);
+  mShaderProgram->setAttributeBuffer(m_aPositionLoc, GL_FLOAT, 0, 2, 0);
+  // mVBO.release();
+  // VAO setup (replaces some of the repeated bindBuffer/vertexAttribPointer calls)
+  mTexture = std::make_unique<QOpenGLTexture>(QOpenGLTexture::Target2D);
+  // mTexture = std::make_unique<QOpenGLTexture>(qGlTarget());
+  if (!mTexture->create()) {
+    SPDLOG_ERROR("Unable to create texture");
+    assert(false);
+  }
+  // mTexture = new QOpenGLTexture(QOpenGLTexture::Target2D);
+  mTexture->bind();  // bind to GL_TEXTURE_2D automatically
+  mTexture->setMinMagFilters(QOpenGLTexture::Nearest, QOpenGLTexture::Nearest);
+  mTexture->setWrapMode(QOpenGLTexture::ClampToEdge);
+
+  mShaderProgram->setUniformValue("u_texture", 0);  // Activate texture unit
+  SPDLOG_INFO("done texture and vertex data init: {}", vertexCount);
+  RunSort();
 }
+
 void GsRenderObject::setupShaderProgram() {
   mShaderProgram = std::make_unique<QOpenGLShaderProgram>();
   if (!mShaderProgram->addCacheableShaderFromSourceFile(QOpenGLShader::Vertex,
@@ -140,8 +141,7 @@ void GsRenderObject::setupShaderProgram() {
 
 void GsRenderObject::LoadAnimateGs(const QString& location) {}
 
-QVector<quint32> GsRenderObject::generateTexture(QByteArray buffer) {
-  
+QVector<quint32> GsRenderObject::generateTexture() {
   const float* f_buffer = reinterpret_cast<const float*>(buffer.constData());
   const quint8* u_buffer = reinterpret_cast<const quint8*>(buffer.constData());
 
@@ -192,29 +192,28 @@ QVector<quint32> GsRenderObject::generateTexture(QByteArray buffer) {
     texdata[8 * i + 5] = packHalf2x16(4 * sigma[2], 4 * sigma[3]);
     texdata[8 * i + 6] = packHalf2x16(4 * sigma[4], 4 * sigma[5]);
   }
-
-  qDebug() << "Generated texture data with size:" << texWidth << "x" << texHeight;
+  SPDLOG_INFO("Generated texture data with size: {}, {}", texWidth, texHeight);
   mTexture->bind();
   mTexture->setSize(texWidth, texHeight);
   mTexture->setFormat(QOpenGLTexture::RGBA32U);
   mTexture->allocateStorage();
-  //const uchar* data = reinterpret_cast<const uchar*>(texdata);
+  // const uchar* data = reinterpret_cast<const uchar*>(texdata);
   mTexture->setData(QOpenGLTexture::RGBA, QOpenGLTexture::UInt8, texdata.data());
   // glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, texwidth, texheight,
   // GL_RGBA_INTEGER, GL_UNSIGNED_INT, texdata.constData());
   // glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, texwidth, texheight, GL_RGBA_INTEGER, GL_UNSIGNED_INT,
   // texdata.constData()); glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32UI, texWidth, texHeight,0,
   // GL_RGBA_INTEGER, GL_UNSIGNED_INT, texdata.data());
-  mTexture->release();
+  // mTexture->release();
   // glGenTextures(1, &mTexture);
   //  QOpenGLFunctions* f = QOpenGLContext::currentContext()->functions();
+
   return texdata;
   // You can now use texdata as your "texture"
   // Optional: emit signalTextureReady(texdata, texWidth, texHeight);
 }
 
 void GsRenderObject::RunSort() {
- 
   const float* f_buffer = reinterpret_cast<const float*>(buffer.constData());
   // Assume viewProj and lastProj are QMatrix4x4, and Positions is a QVector<float> (flat array)
   if (viewProj == QMatrix4x4()) return;  // QMatrix4x4() is the identity
@@ -225,7 +224,8 @@ void GsRenderObject::RunSort() {
     float Dist = (TranslationA - TranslationB).length();
     if (Dist < 0.015f) return;
   } else {
-    QVector<quint32> texture = generateTexture(buffer);
+    QVector<quint32> texture = generateTexture();
+    SPDLOG_INFO("generated texture: {}", texture.size());
     LastVertexCount = vertexCount;
   }
   lastProj = viewProj;
@@ -243,7 +243,7 @@ void GsRenderObject::RunSort() {
     int depthInt = static_cast<int>(depth * 4096.0f);
     SizeList[i] = depthInt;
     if (depthInt > maxDepth) maxDepth = depthInt;
-    if (depthInt < minDepth) minDepth = depthInt; 
+    if (depthInt < minDepth) minDepth = depthInt;
   }
   int range = static_cast<int>(maxDepth - minDepth);
   float depthInv = range > 0 ? (65535.0f / range) : 1.0f;
@@ -282,52 +282,51 @@ void GsRenderObject::RunSort() {
     mVAO.release();
     return;
   }
- // return DepthIndex;
+  // return DepthIndex;
 }
 
-void GsRenderObject::draw() { ///need to fix
+void GsRenderObject::draw() {  /// need to fix
   if (!mShaderProgram) {
     SPDLOG_ERROR("Shader program is not available.");
     return;
   }
-  QMatrix4x4 inv= viewMatrix.inverted();
+  QMatrix4x4 inv = viewMatrix.inverted();
   viewMatrix = inv.inverted();
   QMatrix4x4 inv2 = viewMatrix.inverted();
-// // float m_jumpDelta = 0;
-//  inv2.translate(0.0f, -m_jumpDelta, 0.0f);
-//  inv2.rotate(-0.1f * m_jumpDelta, 1.0f, 0.0f, 0.0f);
+  // // float m_jumpDelta = 0;
+  //  inv2.translate(0.0f, -m_jumpDelta, 0.0f);
+  //  inv2.rotate(-0.1f * m_jumpDelta, 1.0f, 0.0f, 0.0f);
   QMatrix4x4 actualViewMatrix = inv2.inverted();
 
   QMatrix4x4 viewProj = mProjectionMatrix * actualViewMatrix;
   RunSort();
 
-  mShaderProgram->bind();   
+  mShaderProgram->bind();
   mVAO.bind();
-   mShaderProgram->setUniformValue("view", viewMatrix);
-  //glUniformMatrix4fv
+  mShaderProgram->setUniformValue("view", viewMatrix);
+  // glUniformMatrix4fv
   mShaderProgram->setUniformValue("projection", mProjectionMatrix);
   mShaderProgram->setUniformValue("viewport", QVector2D(mViewPort.width(), mViewPort.height()));
   mShaderProgram->setUniformValue("focal", QVector2D(m_camera.fx, m_camera.fy));
-  
- 
-  glDrawElements(GL_TRIANGLES, vertexCount, GL_UNSIGNED_SHORT, 0);
+
+  // glDrawElements(GL_TRIANGLES, vertexCount, GL_UNSIGNED_SHORT, 0);
+
   mVAO.release();
- // glBindTexture(GL_TEXTURE_2D, 0);
+  // glBindTexture(GL_TEXTURE_2D, 0);
   mShaderProgram->release();
 }
-void GsRenderObject::resizeGL(int w, int h) { // need to fix
+void GsRenderObject::resizeGL(int w, int h) {  // need to fix
   // JS: const downsample = ... devicePixelRatio
   // Using QWindow::devicePixelRatio()
- 
+
   // JS: gl.uniform2fv(u_focal, new Float32Array([camera.fx, camera.fy]));
   mShaderProgram->setUniformValue("focal", QVector2D(m_camera.fx, m_camera.fy));
 
   // JS: projectionMatrix = getProjectionMatrix(...)
   mProjectionMatrix = getProjectionMatrix(m_camera.fx, m_camera.fy, w, h);
- 
+
   // JS: gl.uniform2fv(u_viewport, new Float32Array([innerWidth, innerHeight]));
-  mShaderProgram->setUniformValue("viewport",
-                                  QVector2D(mViewPort.width(), mViewPort.height()));
+  mShaderProgram->setUniformValue("viewport", QVector2D(mViewPort.width(), mViewPort.height()));
 
   // JS: gl.uniformMatrix4fv(u_projection, false, projectionMatrix);
   mShaderProgram->setUniformValue("projection", mProjectionMatrix);
