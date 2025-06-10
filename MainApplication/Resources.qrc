@@ -6,5 +6,7 @@
 		<file>resources/shaders/simple_red.frag</file>
 		<file>resources/shaders/gltf.frag</file>
 		<file>resources/shaders/gltf.vert</file>
+		<file>resources/shaders/AnimateGS.frag</file>
+		<file>resources/shaders/AnimateGS.vert</file>
 	</qresource>
 </RCC>
