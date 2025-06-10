@@ -21,7 +21,9 @@
 #include "Rendering/Rendering.h" 
 #include "Renderer.h"
 
-namespace nimagna { 
+namespace nimagna {
+
+class OpenGlWidget;
 class RENDERING_API GsRenderObject : public RenderObject, protected QOpenGLFunctions_4_0_Core {
   Q_OBJECT
 
@@ -60,14 +62,15 @@ class RENDERING_API GsRenderObject : public RenderObject, protected QOpenGLFunct
   // initialize the shader program
   void setupShaderProgram();
   void resizeGL(int w, int h);
-  void RunSort(QByteArray buffer);
-  QVector<quint32> generateTexture(QByteArray buffer);
+  void RunSort( );
+  QVector<quint32> generateTexture(QByteArray buffer); 
  protected:
+  OpenGlWidget* m_glw = nullptr;
   static const inline QString mVertexShaderFile = ":/resources/shaders/AnimateGS.vert";
   static const inline QString mFragmentShaderFile = ":/resources/shaders/AnimateGS.frag";
   std::unique_ptr<QOpenGLShaderProgram> mShaderProgram;
   QString mGsLocation = "";
-  
+  QByteArray buffer;
   Camera m_camera;
   int vertexCount = 0;
   int LastVertexCount = -1;

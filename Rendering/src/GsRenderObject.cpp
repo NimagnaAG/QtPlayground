@@ -40,6 +40,9 @@ GsRenderObject::GsRenderObject(const QString& location, QRect mvp)  {
                              -0.4797239414934443f, 0.027805376500959853f, 0.8769787916452908f});
   m_camera.fy = 1164.6601287484507f;
   m_camera.fx = 1159.5880733038064f; 
+  viewMatrix = QMatrix4x4(new float[]{0.47f, 0.04f, 0.88f, 0, -0.11f, 0.99f, 0.02f, 0, -0.88f,
+                                      -0.11f, 0.47f, 0, 0.07f, 0.03f, 6.55f, 1});
+  mProjectionMatrix = getProjectionMatrix(m_camera.fx, m_camera.fy, mViewPort.width(), mViewPort.height());
   viewMatrix.translate(m_camera.position);    // Adds the translation
   initialize();
   setupShaderProgram();
@@ -70,9 +73,9 @@ void GsRenderObject::LoadSplatGs(const QString& location) {
     SPDLOG_ERROR("Failed to open file: {}", location.toStdString());
     return;
   }
-  QByteArray fileContent = file.readAll();
+  QByteArray buffer = file.readAll();
   int rowLength = 32;
-  vertexCount = fileContent.size() / rowLength;
+  vertexCount = buffer.size() / rowLength;
 
   // Create and configure VAO
   if (mVAO.create()) {
@@ -108,7 +111,7 @@ void GsRenderObject::LoadSplatGs(const QString& location) {
 
     mShaderProgram->setUniformValue("u_texture", 0);  // Activate texture unit
 
-    RunSort(fileContent);
+    RunSort( );
 
   } else {
     SPDLOG_ERROR("Failed to create VAO.");
@@ -210,7 +213,7 @@ QVector<quint32> GsRenderObject::generateTexture(QByteArray buffer) {
   // Optional: emit signalTextureReady(texdata, texWidth, texHeight);
 }
 
-void GsRenderObject::RunSort(QByteArray buffer) {
+void GsRenderObject::RunSort() {
  
   const float* f_buffer = reinterpret_cast<const float*>(buffer.constData());
   // Assume viewProj and lastProj are QMatrix4x4, and Positions is a QVector<float> (flat array)
@@ -287,16 +290,29 @@ void GsRenderObject::draw() { ///need to fix
     SPDLOG_ERROR("Shader program is not available.");
     return;
   }
+  QMatrix4x4 inv= viewMatrix.inverted();
+  viewMatrix = inv.inverted();
+  QMatrix4x4 inv2 = viewMatrix.inverted();
+// // float m_jumpDelta = 0;
+//  inv2.translate(0.0f, -m_jumpDelta, 0.0f);
+//  inv2.rotate(-0.1f * m_jumpDelta, 1.0f, 0.0f, 0.0f);
+  QMatrix4x4 actualViewMatrix = inv2.inverted();
+
+  QMatrix4x4 viewProj = mProjectionMatrix * actualViewMatrix;
+  RunSort();
+
   mShaderProgram->bind();   
-  mShaderProgram->setUniformValue("view", viewMatrix);
+  mVAO.bind();
+   mShaderProgram->setUniformValue("view", viewMatrix);
+  //glUniformMatrix4fv
   mShaderProgram->setUniformValue("projection", mProjectionMatrix);
   mShaderProgram->setUniformValue("viewport", QVector2D(mViewPort.width(), mViewPort.height()));
   mShaderProgram->setUniformValue("focal", QVector2D(m_camera.fx, m_camera.fy));
   
-  mVAO.bind();
+ 
   glDrawElements(GL_TRIANGLES, vertexCount, GL_UNSIGNED_SHORT, 0);
   mVAO.release();
-  glBindTexture(GL_TEXTURE_2D, 0);
+ // glBindTexture(GL_TEXTURE_2D, 0);
   mShaderProgram->release();
 }
 void GsRenderObject::resizeGL(int w, int h) { // need to fix

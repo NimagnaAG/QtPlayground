@@ -63,7 +63,7 @@ void RenderWorker::loadGLTF(QString filename) {
   // loads a GS / video
 void RenderWorker::loadGS(QString filename){
    if (!mRenderObjectManager) return; 
-  mRenderObjectManager->addGsObject(filename);
+  mRenderObjectManager->addGsObject(filename );
   SPDLOG_INFO("A Gaussian Splat Should be displayed now..: " + filename);
 }
 
@@ -140,7 +140,7 @@ void Renderer::start(QOpenGLContext* shareContext) {
   // Create OpenGL context
   // Note: destruction can happen in the render thread, thus, we do not keep a reference but just
   // pass it on to the render worker
-  auto context = std::make_shared<QOpenGLContext>();
+  context = std::make_shared<QOpenGLContext>();
   context->setFormat(format);
   // share context with the main context
   context->setShareContext(shareContext);

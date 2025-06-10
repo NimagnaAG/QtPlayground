@@ -24,7 +24,7 @@ class OpenGlWidget : public QOpenGLWidget, protected QOpenGLFunctions_4_0_Core {
   // set the RenderObjectManager
   void setRenderer(std::shared_ptr<Renderer> renderer);
   void enableTrackball(bool enabled);
-
+  bool isGSobjectAttached = false;
  signals:
   void initialized();
 

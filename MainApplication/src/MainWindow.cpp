@@ -44,13 +44,15 @@ void MainWindow::on_test_triggered() {
   }
   
 }
-void MainWindow::on_GsLoad_triggered() {
+void MainWindow::on_gsload_triggered() {
   SPDLOG_INFO("User action: Load Gaussian Splat Video");
   const QString fileName = QFileDialog::getOpenFileName(this, tr("Open Show"), "", tr("V-splat (*.vsplat;*.splat;*.ply)"));
   SPDLOG_INFO("Filename action: " + fileName);
   if (!fileName.isNull()) {
     // not canceled
     mRenderer->loadGS(fileName);
+    mUI.openGLWidget->isGSobjectAttached = true;
+    mUI.openGLWidget->isGSobjectAttached = true; 
   }
   
 }  

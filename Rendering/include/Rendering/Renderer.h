@@ -110,5 +110,6 @@ class RENDERING_API Renderer final : public QObject {
   std::shared_ptr<QOffscreenSurface> mOffscreenSurface;
   // In threaded mode, the render worker runs the rendering thread
   std::unique_ptr<QThread> mRenderThread;
+  std::shared_ptr<QOpenGLContext> context;
 };
 }  // namespace nimagna

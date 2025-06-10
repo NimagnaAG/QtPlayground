@@ -123,7 +123,7 @@ void OpenGlWidget::resizeGL(int w, int h) {
     mViewPort.setY(pixelRatio * (height() - newHeight) / 2);
     mViewPort.setWidth(pixelRatio * width());
     mViewPort.setHeight(pixelRatio * newHeight);
-  }
+  } 
   QOpenGLWidget::resizeGL(w, h);
 }
 

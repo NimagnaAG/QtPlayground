@@ -31,7 +31,7 @@ class MainWindow : public QMainWindow {
   // File menu
   void on_actionLoad_triggered();
   void on_test_triggered();
-  void on_GsLoad_triggered();
+  void on_gsload_triggered();
   // --- Callback from OpenGL window once initialized
   void onOpenGlWidgetInitialized() const;
 
