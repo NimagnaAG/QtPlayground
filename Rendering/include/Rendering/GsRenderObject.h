@@ -62,8 +62,8 @@ class RENDERING_API GsRenderObject : public RenderObject, protected QOpenGLFunct
   // initialize the shader program
   void setupShaderProgram();
   void resizeGL(int w, int h);
-  void RunSort( );
-  QVector<quint32> generateTexture( ); 
+  void RunSort(const QMatrix4x4& viewProj);
+ void generateTexture( ); 
  protected:
   OpenGlWidget* m_glw = nullptr;
   static const inline QString mVertexShaderFile = ":/resources/shaders/AnimateGS.vert";
@@ -74,7 +74,7 @@ class RENDERING_API GsRenderObject : public RenderObject, protected QOpenGLFunct
   Camera m_camera;
   int vertexCount = 0;
   int LastVertexCount = -1;
-  QMatrix4x4 viewProj, lastProj;
+  QMatrix4x4 lastProj;
   QMatrix4x4 viewMatrix, mProjectionMatrix;
   GLint m_aPositionLoc, m_aIndexLoc;
   std::shared_ptr<Renderer> mRenderer;  // Add this member

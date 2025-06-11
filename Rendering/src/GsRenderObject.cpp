@@ -46,7 +46,6 @@ GsRenderObject::GsRenderObject(const QString& location, QRect mvp) {
       getProjectionMatrix(m_camera.fx, m_camera.fy, mViewPort.width(), mViewPort.height());
   viewMatrix.translate(m_camera.position);  // Adds the translation
   initialize();
-  setupShaderProgram();
 
   // Done
   RenderObject::initialize();
@@ -58,8 +57,10 @@ void GsRenderObject::initialize() {
   setupShaderProgram();
   QString fileExtension = mGsLocation.split(".").last();
   QString splatExt = QString("splat");
-  if (fileExtension.contains(splatExt)) LoadSplatGs(mGsLocation);
-  if (fileExtension.contains("vsplat"))
+  if (fileExtension.contains(splatExt)) {
+    LoadSplatGs(mGsLocation);
+    SPDLOG_INFO("splat file extension load");
+  } else if (fileExtension.contains("vsplat"))
     LoadAnimateGs(mGsLocation);
   else if (fileExtension.contains("ply"))
     LoadGaussianCloud(mGsLocation);
@@ -67,8 +68,6 @@ void GsRenderObject::initialize() {
     LoadSplatGs(mGsLocation);
     SPDLOG_ERROR("file extension wrong:{} ", fileExtension.toStdString());
   }
-  // Done
-  RenderObject::initialize();
 }
 
 void GsRenderObject::LoadSplatGs(const QString& location) {
@@ -79,15 +78,16 @@ void GsRenderObject::LoadSplatGs(const QString& location) {
     SPDLOG_ERROR("Failed to open file: {}", location.toStdString());
     return;
   }
-  QByteArray buffer = file.readAll();
+  buffer = file.readAll();
   int rowLength = 32;
   vertexCount = buffer.size() / rowLength;
 
   // Create and configure VAO
-
+  mVAO.create();
   if (!mVAO.isCreated()) {
-    SPDLOG_DEBUG("Creating VertexArrayObject");
-    mVAO.create();
+    SPDLOG_INFO("Creating VertexArrayObject");
+  } else {
+    SPDLOG_INFO("mVAO already created");
   }
   mVAO.bind();
   mVBO = QOpenGLBuffer(QOpenGLBuffer::VertexBuffer);
@@ -116,7 +116,8 @@ void GsRenderObject::LoadSplatGs(const QString& location) {
 
   mShaderProgram->setUniformValue("u_texture", 0);  // Activate texture unit
   SPDLOG_INFO("done texture and vertex data init: {}", vertexCount);
-  RunSort();
+ 
+ 
 }
 
 void GsRenderObject::setupShaderProgram() {
@@ -141,128 +142,145 @@ void GsRenderObject::setupShaderProgram() {
 
 void GsRenderObject::LoadAnimateGs(const QString& location) {}
 
-QVector<quint32> GsRenderObject::generateTexture() {
+void GsRenderObject::generateTexture() {
   const float* f_buffer = reinterpret_cast<const float*>(buffer.constData());
   const quint8* u_buffer = reinterpret_cast<const quint8*>(buffer.constData());
 
-  int texWidth = 1024 * 2;
-  int texHeight = std::ceil((2.0 * vertexCount) / texWidth);
-  QVector<quint32> texdata(texWidth * texHeight * 4);  // 4 components per pixel
-  quint8* texdata_c = reinterpret_cast<quint8*>(texdata.data());
-  float* texdata_f = reinterpret_cast<float*>(texdata.data());
+  int texwidth = 2048;
+  int texheight = static_cast<int>(std::ceil((2.0 * vertexCount) / texwidth));
+  QByteArray texdata(texwidth * texheight * sizeof(quint32) * 4, 0);  // 4 components per pixel (RGBA)
+  quint32* texdata_u32 = reinterpret_cast<quint32*>(texdata.data());
+  const int rowLength = 32;
+  for (int i = 0; i < vertexCount; i++) {
+    // Position XYZ (Float32)
+    texdata_u32[8 * i + 0] = *reinterpret_cast<const quint32*>(&f_buffer[8 * i + 0]);
+    texdata_u32[8 * i + 1] = *reinterpret_cast<const quint32*>(&f_buffer[8 * i + 1]);
+    texdata_u32[8 * i + 2] = *reinterpret_cast<const quint32*>(&f_buffer[8 * i + 2]);
 
-  for (int i = 0; i < vertexCount; ++i) {
-    // Positions
-    texdata_f[8 * i + 0] = f_buffer[8 * i + 0];
-    texdata_f[8 * i + 1] = f_buffer[8 * i + 1];
-    texdata_f[8 * i + 2] = f_buffer[8 * i + 2];
+    // RGBA colors (uint8) packed into one uint32 for cov.w
+    quint32 colors = (quint32(u_buffer[rowLength * i + 24 + 0]) & 0xFF) |
+                     ((quint32(u_buffer[rowLength * i + 24 + 1]) & 0xFF) << 8) |
+                     ((quint32(u_buffer[rowLength * i + 24 + 2]) & 0xFF) << 16) |
+                     ((quint32(u_buffer[rowLength * i + 24 + 3]) & 0xFF) << 24);
+    texdata_u32[8 * i + 7] = colors;  // This corresponds to cov.w in JS shader logic
 
-    // RGBA color
-    texdata_c[4 * (8 * i + 7) + 0] = u_buffer[32 * i + 24];
-    texdata_c[4 * (8 * i + 7) + 1] = u_buffer[32 * i + 25];
-    texdata_c[4 * (8 * i + 7) + 2] = u_buffer[32 * i + 26];
-    texdata_c[4 * (8 * i + 7) + 3] = u_buffer[32 * i + 27];
+    // Scale (Float32)
+    float scale[3] = {f_buffer[8 * i + 3 + 0], f_buffer[8 * i + 3 + 1], f_buffer[8 * i + 3 + 2]};
 
-    // Quaternion
-    float scale[3] = {f_buffer[8 * i + 3], f_buffer[8 * i + 4], f_buffer[8 * i + 5]};
+    // Rotation (uint8) converted to float [-1, 1]
+    float rot[4] = {(u_buffer[rowLength * i + 28 + 0] - 128) / 128.0f,
+                    (u_buffer[rowLength * i + 28 + 1] - 128) / 128.0f,
+                    (u_buffer[rowLength * i + 28 + 2] - 128) / 128.0f,
+                    (u_buffer[rowLength * i + 28 + 3] - 128) / 128.0f};
 
-    float rot[4] = {
-        (u_buffer[32 * i + 28 + 0] - 128) / 128.0f, (u_buffer[32 * i + 28 + 1] - 128) / 128.0f,
-        (u_buffer[32 * i + 28 + 2] - 128) / 128.0f, (u_buffer[32 * i + 28 + 3] - 128) / 128.0f};
+    // Compute the matrix product of S and R (M = S * R)
+    float M[9];
+    M[0] = (1.0f - 2.0f * (rot[2] * rot[2] + rot[3] * rot[3])) * scale[0];
+    M[1] = (2.0f * (rot[1] * rot[2] + rot[0] * rot[3])) * scale[0];
+    M[2] = (2.0f * (rot[1] * rot[3] - rot[0] * rot[2])) * scale[0];
 
-    // Rotation matrix M = S * R
-    float M[9] = {(1.0f - 2.0f * (rot[2] * rot[2] + rot[3] * rot[3])) * scale[0],
-                  (2.0f * (rot[1] * rot[2] + rot[0] * rot[3])) * scale[0],
-                  (2.0f * (rot[1] * rot[3] - rot[0] * rot[2])) * scale[0],
+    M[3] = (2.0f * (rot[1] * rot[2] - rot[0] * rot[3])) * scale[1];
+    M[4] = (1.0f - 2.0f * (rot[1] * rot[1] + rot[3] * rot[3])) * scale[1];
+    M[5] = (2.0f * (rot[2] * rot[3] + rot[0] * rot[1])) * scale[1];
 
-                  (2.0f * (rot[1] * rot[2] - rot[0] * rot[3])) * scale[1],
-                  (1.0f - 2.0f * (rot[1] * rot[1] + rot[3] * rot[3])) * scale[1],
-                  (2.0f * (rot[2] * rot[3] + rot[0] * rot[1])) * scale[1],
+    M[6] = (2.0f * (rot[1] * rot[3] + rot[0] * rot[2])) * scale[2];
+    M[7] = (2.0f * (rot[2] * rot[3] - rot[0] * rot[1])) * scale[2];
+    M[8] = (1.0f - 2.0f * (rot[1] * rot[1] + rot[2] * rot[2])) * scale[2];
 
-                  (2.0f * (rot[1] * rot[3] + rot[0] * rot[2])) * scale[2],
-                  (2.0f * (rot[2] * rot[3] - rot[0] * rot[1])) * scale[2],
-                  (1.0f - 2.0f * (rot[1] * rot[1] + rot[2] * rot[2])) * scale[2]};
+    float sigma[6];
+    sigma[0] = M[0] * M[0] + M[3] * M[3] + M[6] * M[6];
+    sigma[1] = M[0] * M[1] + M[3] * M[4] + M[6] * M[7];
+    sigma[2] = M[0] * M[2] + M[3] * M[5] + M[6] * M[8];
+    sigma[3] = M[1] * M[1] + M[4] * M[4] + M[7] * M[7];
+    sigma[4] = M[1] * M[2] + M[4] * M[5] + M[7] * M[8];
+    sigma[5] = M[2] * M[2] + M[5] * M[5] + M[8] * M[8];
 
-    float sigma[6] = {
-        M[0] * M[0] + M[3] * M[3] + M[6] * M[6], M[0] * M[1] + M[3] * M[4] + M[6] * M[7],
-        M[0] * M[2] + M[3] * M[5] + M[6] * M[8], M[1] * M[1] + M[4] * M[4] + M[7] * M[7],
-        M[1] * M[2] + M[4] * M[5] + M[7] * M[8], M[2] * M[2] + M[5] * M[5] + M[8] * M[8]};
-
-    texdata[8 * i + 4] = packHalf2x16(4 * sigma[0], 4 * sigma[1]);
-    texdata[8 * i + 5] = packHalf2x16(4 * sigma[2], 4 * sigma[3]);
-    texdata[8 * i + 6] = packHalf2x16(4 * sigma[4], 4 * sigma[5]);
+    texdata_u32[8 * i + 4] = packHalf2x16(4 * sigma[0], 4 * sigma[1]);  // cov.x in shader
+    texdata_u32[8 * i + 5] = packHalf2x16(4 * sigma[2], 4 * sigma[3]);  // cov.y in shader
+    texdata_u32[8 * i + 6] = packHalf2x16(4 * sigma[4], 4 * sigma[5]);  // cov.z in shader
   }
-  SPDLOG_INFO("Generated texture data with size: {}, {}", texWidth, texHeight);
+
+  SPDLOG_INFO("Generated texture data with size: {}, {}", texwidth, texheight);
   mTexture->bind();
-  mTexture->setSize(texWidth, texHeight);
+  mTexture->setSize(texwidth, texheight);
   mTexture->setFormat(QOpenGLTexture::RGBA32U);
   mTexture->allocateStorage();
   // const uchar* data = reinterpret_cast<const uchar*>(texdata);
-  mTexture->setData(QOpenGLTexture::RGBA, QOpenGLTexture::UInt8, texdata.data());
-  // glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, texwidth, texheight,
-  // GL_RGBA_INTEGER, GL_UNSIGNED_INT, texdata.constData());
-  // glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, texwidth, texheight, GL_RGBA_INTEGER, GL_UNSIGNED_INT,
-  // texdata.constData()); glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32UI, texWidth, texHeight,0,
+ // mTexture->setData(QOpenGLTexture::RGBA, QOpenGLTexture::UInt8, texdata.data()); 
+  glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, texwidth, texheight, GL_RGBA_INTEGER, GL_UNSIGNED_INT, texdata.constData());
+ // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32UI, texWidth, texHeight,0,
   // GL_RGBA_INTEGER, GL_UNSIGNED_INT, texdata.data());
-  // mTexture->release();
+    mTexture->release();
   // glGenTextures(1, &mTexture);
-  //  QOpenGLFunctions* f = QOpenGLContext::currentContext()->functions();
-
-  return texdata;
-  // You can now use texdata as your "texture"
-  // Optional: emit signalTextureReady(texdata, texWidth, texHeight);
+  //  QOpenGLFunctions* f = QOpenGLContext::currentContext()->functions(); 
+ // return texdata; 
 }
 
-void GsRenderObject::RunSort() {
+void GsRenderObject::RunSort(const QMatrix4x4& viewProj) {
   const float* f_buffer = reinterpret_cast<const float*>(buffer.constData());
   // Assume viewProj and lastProj are QMatrix4x4, and Positions is a QVector<float> (flat array)
-  if (viewProj == QMatrix4x4()) return;  // QMatrix4x4() is the identity
+  if (viewProj == QMatrix4x4() || viewProj == lastProj) return;  // QMatrix4x4() is the identity
 
   if (LastVertexCount == vertexCount) {
     QVector3D TranslationA = viewProj.column(3).toVector3D();
     QVector3D TranslationB = lastProj.column(3).toVector3D();
     float Dist = (TranslationA - TranslationB).length();
-    if (Dist < 0.015f) return;
+  
+    float dot = lastProj.column(2).z() * viewProj.column(2).z() + lastProj.column(1).z() * viewProj.column(1).z() + lastProj.column(0).z() * viewProj.column(0).z();
+    if (std::abs(dot - 1.0f) < 0.01f) {
+     // return;
+    }
+
+      SPDLOG_INFO("Dist:{}; dot:{}", Dist, dot);
+
+  //  if (Dist < 0.015f) return;
   } else {
-    QVector<quint32> texture = generateTexture();
-    SPDLOG_INFO("generated texture: {}", texture.size());
+    generateTexture(); 
     LastVertexCount = vertexCount;
   }
-  lastProj = viewProj;
 
-  int minDepth = std::numeric_limits<int>::max();
-  int maxDepth = std::numeric_limits<int>::min();
+
+  float maxDepth = -std::numeric_limits<float>::infinity();
+  float minDepth = std::numeric_limits<float>::infinity();
   QVector<int> SizeList(vertexCount);
 
   for (int i = 0; i < vertexCount; i++) {
-    float x = f_buffer[8 * i + 0];
-    float y = f_buffer[8 * i + 1];
-    float z = f_buffer[8 * i + 2];
-
-    float depth = viewProj(2, 0) * x + viewProj(2, 1) * y + viewProj(2, 2) * z;
-    int depthInt = static_cast<int>(depth * 4096.0f);
-    SizeList[i] = depthInt;
-    if (depthInt > maxDepth) maxDepth = depthInt;
-    if (depthInt < minDepth) minDepth = depthInt;
+   // float x = f_buffer[8 * i + 0];
+   // float y = f_buffer[8 * i + 1];
+   // float z = f_buffer[8 * i + 2]; 
+   // float depth = viewProj(2, 0) * x + viewProj(2, 1) * y + viewProj(2, 2) * z;
+   // int depthInt = static_cast<int>(depth * 4096.0f);
+   float depth = (viewProj(2, 0) * f_buffer[8 * i + 0] +  // viewProj[2]
+                  viewProj(2, 1) * f_buffer[8 * i + 1] +  // viewProj[6]
+                  viewProj(2, 2) * f_buffer[8 * i + 2]) *
+                 4096.0f;  // viewProj[10]
+    SizeList[i] = static_cast<int>(depth);
+    if (depth > maxDepth) maxDepth = depth;
+    if (depth < minDepth) minDepth = depth; 
+    if (i<100)
+    SPDLOG_INFO("depth {} {} ",i, depth);
   }
-  int range = static_cast<int>(maxDepth - minDepth);
-  float depthInv = range > 0 ? (65535.0f / range) : 1.0f;
+
+float depthInv = (65535.0f) / (maxDepth - minDepth);
   int ArrayMax = 65536;
   QVector<uint32_t> Counts0(65536, 0);
 
   for (int i = 0; i < vertexCount; i++) {
-    SizeList[i] = static_cast<int>((SizeList[i] - minDepth) * depthInv);
-    if (SizeList[i] >= ArrayMax) SizeList[i] = ArrayMax - 1;
+    SizeList[i] = static_cast<int>((SizeList[i] - minDepth) * depthInv); 
     Counts0[SizeList[i]]++;
   }
 
   QVector<uint32_t> Starts0(ArrayMax, 0);
   for (int i = 1; i < ArrayMax; i++) Starts0[i] = Starts0[i - 1] + Counts0[i - 1];
-
-  QVector<uint32_t> depthIndex(vertexCount, 0);
+  
+  QByteArray depthIndexData(vertexCount * sizeof(quint32), 0);
+  quint32* depthIndex = reinterpret_cast<quint32*>(depthIndexData.data());
+  //QVector<uint32_t> depthIndex(vertexCount, 0);
   for (int i = 0; i < vertexCount; i++) {
     depthIndex[Starts0[SizeList[i]]++] = i;
-  }
+  } 
+
+  lastProj = viewProj;
   // Create and configure Index Buffer
   auto indexBuffer = std::make_unique<QOpenGLBuffer>(QOpenGLBuffer::IndexBuffer);
   // auto indexBuffer = new QOpenGLBuffer(QOpenGLBuffer::IndexBuffer);
@@ -276,7 +294,9 @@ void GsRenderObject::RunSort() {
     // JS: gl.vertexAttribDivisor(a_index, 1);
     glVertexAttribDivisor(m_aIndexLoc, 1);
     indexBuffer->setUsagePattern(QOpenGLBuffer::DynamicDraw);
-    indexBuffer->allocate(depthIndex.constData(), depthIndex.size() * 4);
+    //indexBuffer->allocate(depthIndex.constData(), depthIndex.size() * 4);
+    indexBuffer->allocate(depthIndexData.constData(), depthIndexData.size());
+
   } else {
     SPDLOG_ERROR("Failed to create index buffer.");
     mVAO.release();
@@ -290,8 +310,7 @@ void GsRenderObject::draw() {  /// need to fix
     SPDLOG_ERROR("Shader program is not available.");
     return;
   }
-  QMatrix4x4 inv = viewMatrix.inverted();
-  viewMatrix = inv.inverted();
+   
   QMatrix4x4 inv2 = viewMatrix.inverted();
   // // float m_jumpDelta = 0;
   //  inv2.translate(0.0f, -m_jumpDelta, 0.0f);
@@ -299,7 +318,7 @@ void GsRenderObject::draw() {  /// need to fix
   QMatrix4x4 actualViewMatrix = inv2.inverted();
 
   QMatrix4x4 viewProj = mProjectionMatrix * actualViewMatrix;
-  RunSort();
+  RunSort(viewProj);
 
   mShaderProgram->bind();
   mVAO.bind();
@@ -314,6 +333,7 @@ void GsRenderObject::draw() {  /// need to fix
   mVAO.release();
   // glBindTexture(GL_TEXTURE_2D, 0);
   mShaderProgram->release();
+
 }
 void GsRenderObject::resizeGL(int w, int h) {  // need to fix
   // JS: const downsample = ... devicePixelRatio
