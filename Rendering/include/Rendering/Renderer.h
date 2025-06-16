@@ -86,7 +86,7 @@ class RENDERING_API Renderer final : public QObject {
 
   // access to the ROM
   std::shared_ptr<RenderObjectManager> renderObjectManager() const;
-
+    bool isGSobjectAttached = false; 
  signals:
   // initialize the render worker
   void initializeRenderer();

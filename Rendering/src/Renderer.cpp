@@ -64,6 +64,7 @@ void RenderWorker::loadGLTF(QString filename) {
 void RenderWorker::loadGS(QString filename){
    if (!mRenderObjectManager) return; 
   mRenderObjectManager->addGsObject(filename );
+  //   isGSobjectAttached = true; 
   SPDLOG_INFO("A Gaussian Splat Should be displayed now..: " + filename);
 }
 

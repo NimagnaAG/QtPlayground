@@ -203,8 +203,9 @@ void RenderObjectManager::addGsObject(const QString& filename) {
   std::shared_ptr<GsRenderObject> renderObject =
       std::make_shared<GsRenderObject>(filename, mContext->screen()->geometry());
   renderObject->setDisplayName(filename);
-
+  // mGsRenderObject = renderObject;
   // add object to data structure
+  mGsRenderObjectsList.emplace_back(renderObject);
   mRenderObjectsList.emplace_back(renderObject);
 }
 

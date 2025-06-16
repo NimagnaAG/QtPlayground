@@ -50,9 +50,7 @@ void MainWindow::on_gsload_triggered() {
   SPDLOG_INFO("Filename action: " + fileName);
   if (!fileName.isNull()) {
     // not canceled
-    mRenderer->loadGS(fileName);
-    mUI.openGLWidget->isGSobjectAttached = true;
-    mUI.openGLWidget->isGSobjectAttached = true; 
+    mRenderer->loadGS(fileName); 
   }
   
 }  

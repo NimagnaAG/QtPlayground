@@ -43,6 +43,7 @@ class RENDERING_API RenderObject : public QObject {
 
   // draw the object. OpenGL context is active.
   virtual void draw() = 0;
+  virtual void resizeGL(int w, int h, QRect* mViewPort) = 0;
   float alpha() const;
   void setFallbackAlpha(float alphaValue);
   // get the model matrix

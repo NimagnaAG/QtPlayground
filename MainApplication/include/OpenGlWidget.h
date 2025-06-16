@@ -5,7 +5,7 @@
 
 #include "Rendering/Renderer.h"
 #include "Rendering/TextureRenderObject.h"
-
+#include "Rendering/GsRenderObject.h"
 namespace nimagna {
 
 class RenderObjectManager;
@@ -23,8 +23,7 @@ class OpenGlWidget : public QOpenGLWidget, protected QOpenGLFunctions_4_0_Core {
 
   // set the RenderObjectManager
   void setRenderer(std::shared_ptr<Renderer> renderer);
-  void enableTrackball(bool enabled);
-  bool isGSobjectAttached = false;
+  void enableTrackball(bool enabled); 
  signals:
   void initialized();
 
@@ -54,6 +53,8 @@ class OpenGlWidget : public QOpenGLWidget, protected QOpenGLFunctions_4_0_Core {
 
   // the texture render object to render the geometry
   std::unique_ptr<TextureRenderObject> mTextureRenderObject;
+
+
 
   bool mTrackballEnabled = true;
   bool mLeftButtonDown = false;

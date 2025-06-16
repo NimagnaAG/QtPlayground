@@ -60,8 +60,11 @@ class RENDERING_API GsRenderObject : public RenderObject, protected QOpenGLFunct
   // draws the render object.
   virtual void draw() override;
   // initialize the shader program
-  void setupShaderProgram();
-  void resizeGL(int w, int h);
+  void setupShaderProgram(); 
+ // void paintGL() override;
+
+  // resize
+  void resizeGL(int w, int h, QRect* mvp)  ;
   void RunSort(const QMatrix4x4& viewProj);
  void generateTexture( ); 
  protected:
@@ -81,13 +84,13 @@ class RENDERING_API GsRenderObject : public RenderObject, protected QOpenGLFunct
   QVector<quint32> mTextureData;
   float mDownsample; 
   std::unique_ptr<QOpenGLTexture> mTexture;
-
+ // GLuint mTextureGLuint;
   QOpenGLVertexArrayObject mVAO;
   // the vertex buffer object
   QOpenGLBuffer mVBO;
   // the index buffer with the vertex indices for each triangle
   QOpenGLBuffer mIBO;
-  QRect mViewPort; 
+  QRect* mViewPort; 
 
     quint16 floatToHalf(float value) {
     // Use built-in half if available (Qt 6.6+) or implement manually.
