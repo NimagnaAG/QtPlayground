@@ -196,21 +196,15 @@ void GsRenderObject::generateTexture() {
     texdata_u32[8 * i + 4] = packHalf2x16(4 * sigma[0], 4 * sigma[1]);  // cov.x in shader
     texdata_u32[8 * i + 5] = packHalf2x16(4 * sigma[2], 4 * sigma[3]);  // cov.y in shader
     texdata_u32[8 * i + 6] = packHalf2x16(4 * sigma[4], 4 * sigma[5]);  // cov.z in shader
-  }
-
+  } 
   SPDLOG_INFO("Generated texture data with size: {}, {}", texwidth, texheight);
   mTexture->bind();
   mTexture->setSize(texwidth, texheight);
   mTexture->setFormat(QOpenGLTexture::RGBA32U);
-  mTexture->allocateStorage();
-  // const uchar* data = reinterpret_cast<const uchar*>(texdata);
- //mTexture->setData(QOpenGLTexture::RGBA, QOpenGLTexture::UInt32_RGBA8, texdata.data()); 
-  glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, texwidth, texheight, GL_RGBA_INTEGER, GL_UNSIGNED_INT, texdata.constData());
- 
-    mTexture->release();
-  // glGenTextures(1, &mTexture);
-  //  QOpenGLFunctions* f = QOpenGLContext::currentContext()->functions(); 
- // return texdata; 
+  mTexture->allocateStorage(); 
+  mTexture->setData(QOpenGLTexture::RGBA_Integer, QOpenGLTexture::UInt32_RGBA8, texdata.data());
+ // glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, texwidth, texheight, GL_RGBA_INTEGER, GL_UNSIGNED_INT, texdata.constData()); 
+    mTexture->release(); 
 }
 
 void GsRenderObject::RunSort(const QMatrix4x4& viewProj) {
@@ -224,12 +218,11 @@ void GsRenderObject::RunSort(const QMatrix4x4& viewProj) {
     QVector3D TranslationB = lastProj.column(3).toVector3D();
     float Dist = (TranslationA - TranslationB).length();
   
-    float dot = lastProj.column(2).z() * viewProj.column(2).z() + lastProj.column(1).z() * viewProj.column(1).z() + lastProj.column(0).z() * viewProj.column(0).z();
-    if (std::abs(dot - 1.0f) < 0.01f) {
-     // return;
-    } 
-    SPDLOG_INFO("Dist:{}; dot:{}", Dist, dot); 
-  //  if (Dist < 0.015f) return;
+    float dot = lastProj.column(2).z() * viewProj.column(2).z() + lastProj.column(1).z() * viewProj.column(1).z() + lastProj.column(0).z() * viewProj.column(0).z();  
+    if (std::abs(dot - 1.0f) < 0.01f || Dist < 0.015f) {
+      SPDLOG_INFO("Dist:{} < 0.015f ; dot:{} < 0.01f ", Dist, dot); 
+        return;
+    }  
   } else {
     generateTexture(); 
     LastVertexCount = vertexCount;
@@ -329,8 +322,7 @@ void GsRenderObject::draw() {  /// need to fix
   if (!mShaderProgram) {
     SPDLOG_ERROR("Shader program is not available.");
     return;
-  }
-   
+  } 
   QMatrix4x4 inv2 = viewMatrix.inverted();
   // // float m_jumpDelta = 0;
   //  inv2.translate(0.0f, -m_jumpDelta, 0.0f);
@@ -341,16 +333,19 @@ void GsRenderObject::draw() {  /// need to fix
   RunSort(viewProj);
 
   mShaderProgram->bind();
-  //mVAO.bind();
+  mVAO.bind();
   mShaderProgram->setUniformValue("view", viewMatrix);
   // glUniformMatrix4fv
   mShaderProgram->setUniformValue("projection", mProjectionMatrix);
   mShaderProgram->setUniformValue("viewport", QVector2D(mViewPort->width(), mViewPort->height()));
-  mShaderProgram->setUniformValue("focal", QVector2D(m_camera.fx, m_camera.fy));
-
- //   glDrawElements(GL_TRIANGLES, vertexCount, GL_UNSIGNED_SHORT, 0);
-
- // mVAO.release();
+  mShaderProgram->setUniformValue("focal", QVector2D(m_camera.fx, m_camera.fy)); 
+ if (mTexture && mTexture->isCreated()) {
+    glActiveTexture(GL_TEXTURE0);
+    mTexture->bind();
+    mShaderProgram->setUniformValue("u_texture", 0);
+    glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, vertexCount); 
+  }
+  mVAO.release();
   // glBindTexture(GL_TEXTURE_2D, 0);
   mShaderProgram->release();
 
