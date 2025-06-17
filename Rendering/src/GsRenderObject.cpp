@@ -15,10 +15,7 @@
 #include <QtOpenGL/QOpenGLPixelTransferOptions>
 #include <memory>
 #include <type_traits>
-
-#define TINYGLTF_IMPLEMENTATION
-#define STB_IMAGE_IMPLEMENTATION
-#define STB_IMAGE_WRITE_IMPLEMENTATION
+ 
 #include <cmath>
 
 namespace nimagna {
@@ -209,8 +206,7 @@ void GsRenderObject::generateTexture() {
   // const uchar* data = reinterpret_cast<const uchar*>(texdata);
  //mTexture->setData(QOpenGLTexture::RGBA, QOpenGLTexture::UInt32_RGBA8, texdata.data()); 
   glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, texwidth, texheight, GL_RGBA_INTEGER, GL_UNSIGNED_INT, texdata.constData());
- // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32UI, texWidth, texHeight,0,
-  // GL_RGBA_INTEGER, GL_UNSIGNED_INT, texdata.data());
+ 
     mTexture->release();
   // glGenTextures(1, &mTexture);
   //  QOpenGLFunctions* f = QOpenGLContext::currentContext()->functions(); 
@@ -280,8 +276,33 @@ float depthInv = (65535.0f) / (maxDepth - minDepth);
   } 
 
   lastProj = viewProj;
+  if (!mIBO.isCreated()) {
+    mIBO = QOpenGLBuffer(QOpenGLBuffer::IndexBuffer);
+    if (!mIBO.create()) {
+      SPDLOG_ERROR("Failed to create index buffer");
+      return;
+    }
+    mIBO.setUsagePattern(QOpenGLBuffer::DynamicDraw);
+  }
+
+  mVAO.bind();
+  mIBO.bind();
+  mIBO.allocate(depthIndexData.constData(), depthIndexData.size());
+
+  // Setup vertex attributes if not already done
+  if (m_aIndexLoc == -1) {
+    m_aIndexLoc = mShaderProgram->attributeLocation("index");
+    if (m_aIndexLoc != -1) {
+      mShaderProgram->enableAttributeArray(m_aIndexLoc);
+      glVertexAttribIPointer(m_aIndexLoc, 1, GL_UNSIGNED_INT, 0, nullptr);
+      glVertexAttribDivisor(m_aIndexLoc, 1);
+    }
+  }
+
+  mIBO.release();
+  mVAO.release();
   // Create and configure Index Buffer
-  auto indexBuffer = std::make_unique<QOpenGLBuffer>(QOpenGLBuffer::IndexBuffer);
+  /*  auto indexBuffer = std::make_unique<QOpenGLBuffer>(QOpenGLBuffer::IndexBuffer);
   // auto indexBuffer = new QOpenGLBuffer(QOpenGLBuffer::IndexBuffer);
   if (indexBuffer->create()) {
     indexBuffer->bind();
@@ -300,7 +321,7 @@ float depthInv = (65535.0f) / (maxDepth - minDepth);
     SPDLOG_ERROR("Failed to create index buffer.");
     mVAO.release();
     return;
-  }
+  }*/
   // return DepthIndex;
 }
 
