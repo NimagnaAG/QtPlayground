@@ -82,16 +82,14 @@ void GsRenderObject::LoadSplatGs(const QString& location) {
   buffer = file.readAll();
   int rowLength = 32;
   vertexCount = buffer.size() / rowLength;
-
-  // Create and configure VAO
-  mVAO.create();
+   
   if (!mVAO.isCreated()) {
     SPDLOG_INFO("Creating VertexArrayObject");
   } else {
     SPDLOG_INFO("mVAO already created");
   }
   mVAO.bind();
-  mVBO = QOpenGLBuffer(QOpenGLBuffer::VertexBuffer);
+ 
   if (!mVBO.create()) {
     SPDLOG_ERROR("Failed to create VertexBufferObject");
   }
@@ -155,15 +153,15 @@ void GsRenderObject::setupShaderProgram() {
     float position[2];
     int index; 
   };
-/*  // layout location 0 - vec2 with coordinates
+ // layout location 0 - vec2 with coordinates
   mShaderProgram->enableAttributeArray(0);
   const int positionOffsetBytes = 0;
   mShaderProgram->setAttributeBuffer(0, GL_FLOAT, positionOffsetBytes, positionCount, sizeof(vertexData));
   // layout location 1 - int with index
   mShaderProgram->enableAttributeArray(1);
-  const int indexOffsetBytes = positionCount * sizeof(int);
+  const int indexOffsetBytes = positionCount * sizeof(float);
   mShaderProgram->setAttributeBuffer(1, GL_INT, indexOffsetBytes, indexCount, sizeof(vertexData));
-  mVAO.release();*/
+    mVAO.release(); 
   glDisable(GL_DEPTH_TEST);
   glEnable(GL_BLEND);
   glBlendFuncSeparate(GL_ONE_MINUS_DST_ALPHA, GL_ONE, GL_ONE_MINUS_DST_ALPHA, GL_ONE);
