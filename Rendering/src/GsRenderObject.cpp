@@ -151,11 +151,11 @@ void GsRenderObject::setupShaderProgram() {
   mVBO.bind(); 
   const int positionCount = 2; 
   const int indexCount = 1;
-  struct vertexData {
+    struct vertexData {
     float position[2];
     int index; 
   };
-  // layout location 0 - vec2 with coordinates
+/*  // layout location 0 - vec2 with coordinates
   mShaderProgram->enableAttributeArray(0);
   const int positionOffsetBytes = 0;
   mShaderProgram->setAttributeBuffer(0, GL_FLOAT, positionOffsetBytes, positionCount, sizeof(vertexData));
@@ -163,7 +163,7 @@ void GsRenderObject::setupShaderProgram() {
   mShaderProgram->enableAttributeArray(1);
   const int indexOffsetBytes = positionCount * sizeof(int);
   mShaderProgram->setAttributeBuffer(1, GL_INT, indexOffsetBytes, indexCount, sizeof(vertexData));
-  mVAO.release();
+  mVAO.release();*/
   glDisable(GL_DEPTH_TEST);
   glEnable(GL_BLEND);
   glBlendFuncSeparate(GL_ONE_MINUS_DST_ALPHA, GL_ONE, GL_ONE_MINUS_DST_ALPHA, GL_ONE);
