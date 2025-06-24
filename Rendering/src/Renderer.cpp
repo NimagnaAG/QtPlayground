@@ -63,8 +63,7 @@ void RenderWorker::loadGLTF(QString filename) {
   // loads a GS / video
 void RenderWorker::loadGS(QString filename){
    if (!mRenderObjectManager) return; 
-  mRenderObjectManager->addGsObject(filename );
-  //   isGSobjectAttached = true; 
+  mRenderObjectManager->addGsObject(filename ); 
   SPDLOG_INFO("A Gaussian Splat Should be displayed now..: " + filename);
 }
 
@@ -217,4 +216,7 @@ void Renderer::addImage(QString filename) {
   emit loadImage(filename);
 }
 
+void Renderer::addGS(QString filename) {
+  emit loadGS(filename);
+}
 }  // namespace nimagna

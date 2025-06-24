@@ -63,7 +63,7 @@ void GltfRenderObject::initialize() {
   tinygltf::TinyGLTF loader;
   std::string err;
   std::string warn;
-
+  setupShaderProgram();
   bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, mGltfLocation.toStdString());
   if (!warn.empty()) {
     SPDLOG_WARN("GLTF Warning: {}", warn);
@@ -101,7 +101,7 @@ void GltfRenderObject::initialize() {
   loadTextures(model);
 
   // Finally, build and compile the shader program
-  setupShaderProgram();
+
 
   // Done
   RenderObject::initialize();
@@ -309,8 +309,7 @@ void GltfRenderObject::setupShaderProgram() {
   // layout location 0 - vec3 with coordinates
   mShaderProgram->enableAttributeArray(0);
   const int positionOffsetBytes = 0;
-  mShaderProgram->setAttributeBuffer(0, GL_FLOAT, positionOffsetBytes, positionCount,
-                                     sizeof(vertexData));
+  mShaderProgram->setAttributeBuffer(0, GL_FLOAT, positionOffsetBytes, positionCount, sizeof(vertexData));
 
   // layout location 1 - vec3 with normals
   mShaderProgram->enableAttributeArray(1);

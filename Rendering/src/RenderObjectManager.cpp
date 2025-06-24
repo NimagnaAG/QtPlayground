@@ -139,9 +139,10 @@ bool RenderObjectManager::render() {
   // object (i.e. storyboard + more) or the storyboard is the only item and has content
   if (mCurrentRenderData && (mRenderObjectsList.size() > 0)) {
     // get projection from shot
-   // const QMatrix4x4 projectionMatrix = mCurrentRenderData->projectionMatrix();
+    const QMatrix4x4 projectionMatrix = mCurrentRenderData->projectionMatrix();
     for (const auto& renderObject : mRenderObjectsList) {
-     // renderObject->prepare(projectionMatrix);
+     //
+      renderObject->prepare(projectionMatrix);
       renderObject->draw();
     }
   }
@@ -207,6 +208,7 @@ void RenderObjectManager::addGsObject(const QString& filename) {
   // add object to data structure
   mGsRenderObjectsList.emplace_back(renderObject);
   mRenderObjectsList.emplace_back(renderObject);
+    isGSobjectAttached = true;
 }
 
 

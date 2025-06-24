@@ -50,6 +50,7 @@ class RENDERING_API RenderObjectManager final : public QObject {
   bool isActiveRenderObject(const std::shared_ptr<RenderObject> renderObject) const;
   void changeOpenGlDebugging(bool enabled);
   RenderObjectList mGsRenderObjectsList;
+  bool isGSobjectAttached = false; 
  private:
   // pass the context to the render object manager and initialize
   bool render();

@@ -22,30 +22,31 @@ namespace nimagna {
 
 GsRenderObject::GsRenderObject(const QString& location, QRect mvp) {
   // enableSeparateMask(false, false);
-  mGsLocation = location;
-
+  mGsLocation = location; 
   mViewPort = &mvp;
   m_camera.id = 0;
   m_camera.img_name = "00001";
-  m_camera.width = 1959;
-  m_camera.height = 1090;
+  m_camera.width = mViewPort->width();
+  m_camera.height = mViewPort->height();
   m_camera.position = QVector3D(-3.0089893469241797f, -0.11086489695181866f, -3.7527640949141428f);
   // This is a simplified direct conversion, real rotation needs proper QMatrix3x3
   m_camera.rotation =
       QMatrix3x3(new float[]{0.876134201218856f, 0.06925962026449776f, 0.47706599800804744f,
                              -0.04747421839895102f, 0.9972110940209488f, -0.057586739349882114f,
                              -0.4797239414934443f, 0.027805376500959853f, 0.8769787916452908f});
-  m_camera.fy = 1164.6601287484507f;
-  m_camera.fx = 1159.5880733038064f;
+  m_camera.fy = mViewPort->height()/2;
+  m_camera.fx = mViewPort->width()/2;
   viewMatrix = QMatrix4x4(new float[]{0.47f, 0.04f, 0.88f, 0, -0.11f, 0.99f, 0.02f, 0, -0.88f,
                                       -0.11f, 0.47f, 0, 0.07f, 0.03f, 6.55f, 1});
   mProjectionMatrix =
-      getProjectionMatrix(m_camera.fx, m_camera.fy, mViewPort->width(), mViewPort->height());
+      getProjectionMatrix(m_camera.fx, m_camera.fy, mViewPort->width(), mViewPort->height()); 
+  // Set up the projection matrix
+  const float aspectRatio = 1.0f;
+  const float nearPlane = 0.01f;
+  const float farPlane = 1000.f;
+  mProjectionMatrix.perspective(90, aspectRatio, nearPlane, farPlane);
   viewMatrix.translate(m_camera.position);  // Adds the translation
-  initialize();
-
-  // Done
-  RenderObject::initialize();
+  initialize(); 
 }
 
 void GsRenderObject::initialize() {
@@ -65,6 +66,9 @@ void GsRenderObject::initialize() {
     LoadSplatGs(mGsLocation);
     SPDLOG_ERROR("file extension wrong:{} ", fileExtension.toStdString());
   }
+
+  // Done
+  RenderObject::initialize();
 }
 
 void GsRenderObject::LoadSplatGs(const QString& location) {
@@ -120,22 +124,51 @@ void GsRenderObject::LoadSplatGs(const QString& location) {
 
 void GsRenderObject::setupShaderProgram() {
   mShaderProgram = std::make_unique<QOpenGLShaderProgram>();
-  if (!mShaderProgram->addCacheableShaderFromSourceFile(QOpenGLShader::Vertex,
-                                                        ":/resources/shaders/AnimateGS.vert")) {
+  if (!mShaderProgram->addCacheableShaderFromSourceFile(QOpenGLShader::Vertex,  ":/resources/shaders/AnimateGS.vert")) {
     SPDLOG_ERROR("Vertex shader error! {}", mShaderProgram->log().toStdString());
   }
-  if (!mShaderProgram->addCacheableShaderFromSourceFile(QOpenGLShader::Fragment,
-                                                        ":/resources/shaders/AnimateGS.frag")) {
+  if (!mShaderProgram->addCacheableShaderFromSourceFile(QOpenGLShader::Fragment,  ":/resources/shaders/AnimateGS.frag")) {
     SPDLOG_ERROR("Fragment shader error! {}", mShaderProgram->log().toStdString());
   }
   if (!mShaderProgram->link()) {
     SPDLOG_ERROR("Shader linker error! {}", mShaderProgram->log().toStdString());
   }
-  mShaderProgram->bind();
+  if (!mShaderProgram->bind()) {
+    SPDLOG_ERROR("Failed to bind shader program! {}", mShaderProgram->log().toStdString());
+  } 
+  glUseProgram(mShaderProgram->programId());
+  mVBO = QOpenGLBuffer(QOpenGLBuffer::VertexBuffer);
+  if (!mVBO.create()) {
+    SPDLOG_ERROR("Failed to create VertexBufferObject");
+  }
+  mVBO.setUsagePattern(QOpenGLBuffer::StaticDraw);
+
+  if (!mVAO.isCreated()) {
+    SPDLOG_DEBUG("Creating VertexArrayObject");
+    mVAO.create();
+  }
+  mVAO.bind();
+  mVBO.bind(); 
+  const int positionCount = 2; 
+  const int indexCount = 1;
+  struct vertexData {
+    float position[2];
+    int index; 
+  };
+  // layout location 0 - vec2 with coordinates
+  mShaderProgram->enableAttributeArray(0);
+  const int positionOffsetBytes = 0;
+  mShaderProgram->setAttributeBuffer(0, GL_FLOAT, positionOffsetBytes, positionCount, sizeof(vertexData));
+  // layout location 1 - int with index
+  mShaderProgram->enableAttributeArray(1);
+  const int indexOffsetBytes = positionCount * sizeof(int);
+  mShaderProgram->setAttributeBuffer(1, GL_INT, indexOffsetBytes, indexCount, sizeof(vertexData));
+  mVAO.release();
   glDisable(GL_DEPTH_TEST);
   glEnable(GL_BLEND);
   glBlendFuncSeparate(GL_ONE_MINUS_DST_ALPHA, GL_ONE, GL_ONE_MINUS_DST_ALPHA, GL_ONE);
   glBlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD);
+  glEnable(GL_DEBUG_OUTPUT);
 }
 
 void GsRenderObject::LoadAnimateGs(const QString& location) {}
@@ -343,12 +376,13 @@ void GsRenderObject::draw() {  /// need to fix
     glActiveTexture(GL_TEXTURE0);
     mTexture->bind();
     mShaderProgram->setUniformValue("u_texture", 0);
+    glClear(GL_COLOR_BUFFER_BIT);
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, vertexCount); 
+   //glDrawArraysInstanced(GL_POINTS, 0, 1, vertexCount);
   }
   mVAO.release();
   // glBindTexture(GL_TEXTURE_2D, 0);
-  mShaderProgram->release();
-
+  mShaderProgram->release(); 
 }
 void GsRenderObject::resizeGL(int w, int h, QRect* mvp)   {  // need to fix
   // JS: const downsample = ... devicePixelRatio

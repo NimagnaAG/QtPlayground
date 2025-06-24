@@ -83,10 +83,11 @@ class RENDERING_API Renderer final : public QObject {
   void stop();
 
   void addImage(QString filename);
+  void addGS(QString filename);
 
   // access to the ROM
   std::shared_ptr<RenderObjectManager> renderObjectManager() const;
-    bool isGSobjectAttached = false; 
+ 
  signals:
   // initialize the render worker
   void initializeRenderer();

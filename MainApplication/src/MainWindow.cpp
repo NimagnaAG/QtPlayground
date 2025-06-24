@@ -51,12 +51,12 @@ void MainWindow::on_gsload_triggered() {
   if (!fileName.isNull()) {
     // not canceled
     mRenderer->loadGS(fileName); 
-  }
-  
+  } 
 }  
 void MainWindow::onOpenGlWidgetInitialized() const {
   mRenderer->start(mUI.openGLWidget->context());
   mUI.openGLWidget->update();
+  SPDLOG_INFO("ainWindow::onOpenGlWidgetInitialized() " );
 }
 
 void MainWindow::connectSignalsAndSlots() {

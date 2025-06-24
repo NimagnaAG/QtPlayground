@@ -124,11 +124,10 @@ void OpenGlWidget::resizeGL(int w, int h) {
     mViewPort.setWidth(pixelRatio * width());
     mViewPort.setHeight(pixelRatio * newHeight);
   } 
-  if (mRenderer->isGSobjectAttached) {
+  if (mRenderer->renderObjectManager()->isGSobjectAttached) {
     for (const auto& obj : mRenderer->renderObjectManager()->mGsRenderObjectsList) {
       obj->resizeGL(w, h, &mViewPort);  // or any method on RenderObject
-    }
-   
+    } 
   }
   SPDLOG_INFO("OpenGlWidget::resizeGL {}, {}, ratio {}", mViewPort.width(),
               mViewPort.height(),  ratio);
