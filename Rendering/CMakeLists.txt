@@ -1,5 +1,6 @@
 set(PROJECT_NAME Rendering)
-
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON) 
 # Disable adding $(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME) to library search paths
 # https://cmake.org/cmake/help/latest/policy/CMP0142.html
 cmake_policy(SET CMP0142 NEW)

@@ -48,7 +48,7 @@ class RENDERING_API GltfRenderObject : public RenderObject, protected QOpenGLFun
 
   // draws the render object.
   virtual void draw() override;
-  virtual void resizeGL(int w, int h, QRect* mvp) override{};
+  virtual void resizeGL(int w, int h ) override{};
   // get the source's texture and mask size
   bool isEmpty() const;
   // normally, the GltfRenderObject renders its own texture. If this flag is set, the TRO assumes

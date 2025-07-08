@@ -126,7 +126,7 @@ void OpenGlWidget::resizeGL(int w, int h) {
   } 
   if (mRenderer->renderObjectManager()->isGSobjectAttached) {
     for (const auto& obj : mRenderer->renderObjectManager()->mGsRenderObjectsList) {
-      obj->resizeGL(w, h, &mViewPort);  // or any method on RenderObject
+      obj->resizeGL(w, h);  // or any method on RenderObject
     } 
   }
   SPDLOG_INFO("OpenGlWidget::resizeGL {}, {}, ratio {}", mViewPort.width(),
@@ -163,6 +163,11 @@ void OpenGlWidget::keyPressEvent(QKeyEvent* event) {
     }
     rom->currentRenderData()->setFraming3D(framing3D);
     updateRendering();
+  }
+  if (mRenderer->renderObjectManager()->isGSobjectAttached) {
+    for (const auto& obj : mRenderer->renderObjectManager()->mGsRenderObjectsList) {
+     // obj->resizeGL(w, h);  // or any method on RenderObject
+    }
   }
 }
 

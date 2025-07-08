@@ -15,44 +15,33 @@
 #include <QtOpenGL/QOpenGLPixelTransferOptions>
 #include <memory>
 #include <type_traits>
- 
+#include <array>
+#include <vector>
+#include <mdspan>
+
 #include <cmath>
 
 namespace nimagna {
 
-GsRenderObject::GsRenderObject(const QString& location, QRect mvp) {
-  // enableSeparateMask(false, false);
-  mGsLocation = location; 
-  mViewPort = &mvp;
-  m_camera.id = 0;
-  m_camera.img_name = "00001";
-  m_camera.width = mViewPort->width();
-  m_camera.height = mViewPort->height();
-  m_camera.position = QVector3D(-3.0089893469241797f, -0.11086489695181866f, -3.7527640949141428f);
-  // This is a simplified direct conversion, real rotation needs proper QMatrix3x3
-  m_camera.rotation =
-      QMatrix3x3(new float[]{0.876134201218856f, 0.06925962026449776f, 0.47706599800804744f,
-                             -0.04747421839895102f, 0.9972110940209488f, -0.057586739349882114f,
-                             -0.4797239414934443f, 0.027805376500959853f, 0.8769787916452908f});
-  m_camera.fy = mViewPort->height()/2;
-  m_camera.fx = mViewPort->width()/2;
-  viewMatrix = QMatrix4x4(new float[]{0.47f, 0.04f, 0.88f, 0, -0.11f, 0.99f, 0.02f, 0, -0.88f,
-                                      -0.11f, 0.47f, 0, 0.07f, 0.03f, 6.55f, 1});
-  mProjectionMatrix =
-      getProjectionMatrix(m_camera.fx, m_camera.fy, mViewPort->width(), mViewPort->height()); 
-  // Set up the projection matrix
-  const float aspectRatio = 1.0f;
-  const float nearPlane = 0.01f;
-  const float farPlane = 1000.f;
-  mProjectionMatrix.perspective(90, aspectRatio, nearPlane, farPlane);
-  viewMatrix.translate(m_camera.position);  // Adds the translation
+GsRenderObject::GsRenderObject(const QString& location) 
+  : m_texture(QOpenGLTexture::Target2D),  // Initialize m_texture with a valid constructor
+    viewMatrix(nullptr, std::extents<std::size_t, 4, 4>()) {  // Initialize viewMatrix with nullptr first
+  // Properly initialize std::mdspan
+  static float initialMatrix[16] = {1.f, 0.f,  0.f, 0.f, 
+                                    0.f, 1.f, 0.f, 0.f,
+                                    0.f, 0.f, 1.f, 0.0f, 
+                                    0.7f,  0.0f, 0.55f, 1.0f};
+
+  viewMatrix = std::mdspan<float, std::extents<std::size_t, 4, 4>>(initialMatrix);
+  mGsLocation = location;  
   initialize(); 
 }
 
 void GsRenderObject::initialize() {
   initializeOpenGLFunctions();
-
-  setupShaderProgram();
+   
+  // Done
+  RenderObject::initialize();
   QString fileExtension = mGsLocation.split(".").last();
   QString splatExt = QString("splat");
   if (fileExtension.contains(splatExt)) {
@@ -67,337 +56,222 @@ void GsRenderObject::initialize() {
     SPDLOG_ERROR("file extension wrong:{} ", fileExtension.toStdString());
   }
 
-  // Done
-  RenderObject::initialize();
 }
 
 void GsRenderObject::LoadSplatGs(const QString& location) {
   // Clear previous data
+    std::vector<unsigned char> data = readFromFile(location.toStdString());
 
-  QFile file(location);
-  if (!file.open(QFile::ReadOnly)) {
-    SPDLOG_ERROR("Failed to open file: {}", location.toStdString());
-    return;
-  }
-  buffer = file.readAll();
-  int rowLength = 32;
-  vertexCount = buffer.size() / rowLength;
-   
-  if (!mVAO.isCreated()) {
-    SPDLOG_INFO("Creating VertexArrayObject");
-  } else {
-    SPDLOG_INFO("mVAO already created");
-  }
-  mVAO.bind();
- 
-  if (!mVBO.create()) {
-    SPDLOG_ERROR("Failed to create VertexBufferObject");
-  }
-  mVBO.bind();
-  const float triangleVertices[] = {-2, -2, 2, -2, 2, 2, -2, 2};  // 4 vertices, 2 components each
-  mVBO.allocate(triangleVertices, sizeof(triangleVertices));
-  // mShaderProgram->setUniformValue("view", viewMatrix);
-  m_aPositionLoc = mShaderProgram->attributeLocation("position");
-  mShaderProgram->enableAttributeArray(m_aPositionLoc);
-  mShaderProgram->setAttributeBuffer(m_aPositionLoc, GL_FLOAT, 0, 2, 0);
-  // mVBO.release();
-  // VAO setup (replaces some of the repeated bindBuffer/vertexAttribPointer calls)
-  mTexture = std::make_unique<QOpenGLTexture>(QOpenGLTexture::Target2D);
-  // mTexture = std::make_unique<QOpenGLTexture>(qGlTarget());
-  if (!mTexture->create()) {
-    SPDLOG_ERROR("Unable to create texture");
-    assert(false);
-  }
-  // mTexture = new QOpenGLTexture(QOpenGLTexture::Target2D);
-  mTexture->bind();  // bind to GL_TEXTURE_2D automatically
-  mTexture->setMinMagFilters(QOpenGLTexture::Nearest, QOpenGLTexture::Nearest);
-  mTexture->setWrapMode(QOpenGLTexture::ClampToEdge);
+    // resize data folowing the vertexCount
+    vertexCount = static_cast<int>(data.size() / rowLength);
 
-  mShaderProgram->setUniformValue("u_texture", 0);  // Activate texture unit
+    depthIndex.resize(vertexCount + 1);
 
-  SPDLOG_INFO("done texture and vertex data init: {}", vertexCount);
- 
- 
-}
-
-void GsRenderObject::setupShaderProgram() {
-  mShaderProgram = std::make_unique<QOpenGLShaderProgram>();
-  if (!mShaderProgram->addCacheableShaderFromSourceFile(QOpenGLShader::Vertex,  ":/resources/shaders/AnimateGS.vert")) {
-    SPDLOG_ERROR("Vertex shader error! {}", mShaderProgram->log().toStdString());
-  }
-  if (!mShaderProgram->addCacheableShaderFromSourceFile(QOpenGLShader::Fragment,  ":/resources/shaders/AnimateGS.frag")) {
-    SPDLOG_ERROR("Fragment shader error! {}", mShaderProgram->log().toStdString());
-  }
-  if (!mShaderProgram->link()) {
-    SPDLOG_ERROR("Shader linker error! {}", mShaderProgram->log().toStdString());
-  }
-  if (!mShaderProgram->bind()) {
-    SPDLOG_ERROR("Failed to bind shader program! {}", mShaderProgram->log().toStdString());
-  } 
-  glUseProgram(mShaderProgram->programId());
-  mVBO = QOpenGLBuffer(QOpenGLBuffer::VertexBuffer);
-  if (!mVBO.create()) {
-    SPDLOG_ERROR("Failed to create VertexBufferObject");
-  }
-  mVBO.setUsagePattern(QOpenGLBuffer::StaticDraw);
-
-  if (!mVAO.isCreated()) {
-    SPDLOG_DEBUG("Creating VertexArrayObject");
-    mVAO.create();
-  }
-  mVAO.bind();
-  mVBO.bind(); 
-  const int positionCount = 2; 
-  const int indexCount = 1;
-    struct vertexData {
-    float position[2];
-    int index; 
-  };
- // layout location 0 - vec2 with coordinates
-  mShaderProgram->enableAttributeArray(0);
-  const int positionOffsetBytes = 0;
-  mShaderProgram->setAttributeBuffer(0, GL_FLOAT, positionOffsetBytes, positionCount, sizeof(vertexData));
-  // layout location 1 - int with index
-  mShaderProgram->enableAttributeArray(1);
-  const int indexOffsetBytes = positionCount * sizeof(float);
-  mShaderProgram->setAttributeBuffer(1, GL_INT, indexOffsetBytes, indexCount, sizeof(vertexData));
-    mVAO.release(); 
-  glDisable(GL_DEPTH_TEST);
-  glEnable(GL_BLEND);
-  glBlendFuncSeparate(GL_ONE_MINUS_DST_ALPHA, GL_ONE, GL_ONE_MINUS_DST_ALPHA, GL_ONE);
-  glBlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD);
-  glEnable(GL_DEBUG_OUTPUT);
-}
+    texheight = std::ceil((float)(2 * vertexCount) / (float)texwidth);  // Set to your desired height
+    m_data = std::make_unique<SplatData>(data);
+    textureCoro.setData(std::make_unique<SplatData>(data));
+    textureCoro.generateTexture();
+    initializeGL(); 
+    setView(viewMatrix[std::array{0, 2}], viewMatrix[std::array{1, 2}],
+            viewMatrix[std::array{2, 2}]);
+} 
 
 void GsRenderObject::LoadAnimateGs(const QString& location) {}
-
-void GsRenderObject::generateTexture() {
-  const float* f_buffer = reinterpret_cast<const float*>(buffer.constData());
-  const quint8* u_buffer = reinterpret_cast<const quint8*>(buffer.constData());
-
-  int texwidth = 2048;
-  int texheight = static_cast<int>(std::ceil((2.0 * vertexCount) / texwidth));
-  QByteArray texdata(texwidth * texheight * sizeof(quint32) * 4, 0);  // 4 components per pixel (RGBA)
-  quint32* texdata_u32 = reinterpret_cast<quint32*>(texdata.data());
-  const int rowLength = 32;
-  for (int i = 0; i < vertexCount; i++) {
-    // Position XYZ (Float32)
-    texdata_u32[8 * i + 0] = *reinterpret_cast<const quint32*>(&f_buffer[8 * i + 0]);
-    texdata_u32[8 * i + 1] = *reinterpret_cast<const quint32*>(&f_buffer[8 * i + 1]);
-    texdata_u32[8 * i + 2] = *reinterpret_cast<const quint32*>(&f_buffer[8 * i + 2]);
-
-    // RGBA colors (uint8) packed into one uint32 for cov.w
-    quint32 colors = (quint32(u_buffer[rowLength * i + 24 + 0]) & 0xFF) |
-                     ((quint32(u_buffer[rowLength * i + 24 + 1]) & 0xFF) << 8) |
-                     ((quint32(u_buffer[rowLength * i + 24 + 2]) & 0xFF) << 16) |
-                     ((quint32(u_buffer[rowLength * i + 24 + 3]) & 0xFF) << 24);
-    texdata_u32[8 * i + 7] = colors;  // This corresponds to cov.w in JS shader logic
-
-    // Scale (Float32)
-    float scale[3] = {f_buffer[8 * i + 3 + 0], f_buffer[8 * i + 3 + 1], f_buffer[8 * i + 3 + 2]};
-
-    // Rotation (uint8) converted to float [-1, 1]
-    float rot[4] = {(u_buffer[rowLength * i + 28 + 0] - 128) / 128.0f,
-                    (u_buffer[rowLength * i + 28 + 1] - 128) / 128.0f,
-                    (u_buffer[rowLength * i + 28 + 2] - 128) / 128.0f,
-                    (u_buffer[rowLength * i + 28 + 3] - 128) / 128.0f};
-
-    // Compute the matrix product of S and R (M = S * R)
-    float M[9];
-    M[0] = (1.0f - 2.0f * (rot[2] * rot[2] + rot[3] * rot[3])) * scale[0];
-    M[1] = (2.0f * (rot[1] * rot[2] + rot[0] * rot[3])) * scale[0];
-    M[2] = (2.0f * (rot[1] * rot[3] - rot[0] * rot[2])) * scale[0];
-
-    M[3] = (2.0f * (rot[1] * rot[2] - rot[0] * rot[3])) * scale[1];
-    M[4] = (1.0f - 2.0f * (rot[1] * rot[1] + rot[3] * rot[3])) * scale[1];
-    M[5] = (2.0f * (rot[2] * rot[3] + rot[0] * rot[1])) * scale[1];
-
-    M[6] = (2.0f * (rot[1] * rot[3] + rot[0] * rot[2])) * scale[2];
-    M[7] = (2.0f * (rot[2] * rot[3] - rot[0] * rot[1])) * scale[2];
-    M[8] = (1.0f - 2.0f * (rot[1] * rot[1] + rot[2] * rot[2])) * scale[2];
-
-    float sigma[6];
-    sigma[0] = M[0] * M[0] + M[3] * M[3] + M[6] * M[6];
-    sigma[1] = M[0] * M[1] + M[3] * M[4] + M[6] * M[7];
-    sigma[2] = M[0] * M[2] + M[3] * M[5] + M[6] * M[8];
-    sigma[3] = M[1] * M[1] + M[4] * M[4] + M[7] * M[7];
-    sigma[4] = M[1] * M[2] + M[4] * M[5] + M[7] * M[8];
-    sigma[5] = M[2] * M[2] + M[5] * M[5] + M[8] * M[8];
-
-    texdata_u32[8 * i + 4] = packHalf2x16(4 * sigma[0], 4 * sigma[1]);  // cov.x in shader
-    texdata_u32[8 * i + 5] = packHalf2x16(4 * sigma[2], 4 * sigma[3]);  // cov.y in shader
-    texdata_u32[8 * i + 6] = packHalf2x16(4 * sigma[4], 4 * sigma[5]);  // cov.z in shader
-  } 
-  SPDLOG_INFO("Generated texture data with size: {}, {}", texwidth, texheight);
-  mTexture->bind();
-  mTexture->setSize(texwidth, texheight);
-  mTexture->setFormat(QOpenGLTexture::RGBA32U);
-  mTexture->allocateStorage(); 
-  mTexture->setData(QOpenGLTexture::RGBA_Integer, QOpenGLTexture::UInt32_RGBA8, texdata.data());
- // glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, texwidth, texheight, GL_RGBA_INTEGER, GL_UNSIGNED_INT, texdata.constData()); 
-    mTexture->release(); 
-}
-
-void GsRenderObject::RunSort(const QMatrix4x4& viewProj) {
-  const float* f_buffer = reinterpret_cast<const float*>(buffer.constData());
-  // Assume viewProj and lastProj are QMatrix4x4, and Positions is a QVector<float> (flat array)
-  if (viewProj == QMatrix4x4() || viewProj == lastProj) {
-    return;  // QMatrix4x4() is the identity
-  }
-  if (LastVertexCount == vertexCount) {
-    QVector3D TranslationA = viewProj.column(3).toVector3D();
-    QVector3D TranslationB = lastProj.column(3).toVector3D();
-    float Dist = (TranslationA - TranslationB).length();
   
-    float dot = lastProj.column(2).z() * viewProj.column(2).z() + lastProj.column(1).z() * viewProj.column(1).z() + lastProj.column(0).z() * viewProj.column(0).z();  
-    if (std::abs(dot - 1.0f) < 0.01f || Dist < 0.015f) {
-      SPDLOG_INFO("Dist:{} < 0.015f ; dot:{} < 0.01f ", Dist, dot); 
-        return;
-    }  
-  } else {
-    generateTexture(); 
-    LastVertexCount = vertexCount;
-  }
-
-
-  float maxDepth = -std::numeric_limits<float>::infinity();
-  float minDepth = std::numeric_limits<float>::infinity();
-  QVector<int> SizeList(vertexCount);
-
+void GsRenderObject::draw() {
+ // worldInteraction(viewMatrix);
+  setView(viewMatrix[std::array{0, 2}], viewMatrix[std::array{1, 2}],  viewMatrix[std::array{2, 2}]);
+}
+//
+//void GsRenderObject::viewChanged() { 
+//    QOpenGLExtraFunctions* f = QOpenGLContext::currentContext()->extraFunctions();
+//
+//  // fps calculations (from paintGL)
+//  f->glUniformMatrix4fv(m_viewLoc, 1, false, viewMatrix.data_handle());
+//  f->glClear(GL_COLOR_BUFFER_BIT);
+//  QOpenGLContext::currentContext()->extraFunctions()->glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4,
+//                                                                            vertexCount);
+//} 
+void GsRenderObject::sortByDepth(float x, float y, float z) {
+  int maxDepth = std::numeric_limits<int>::min();
+  int minDepth = std::numeric_limits<int>::max();
+  std::vector<unsigned int> sizeList(vertexCount);
   for (int i = 0; i < vertexCount; i++) {
-   // float x = f_buffer[8 * i + 0];
-   // float y = f_buffer[8 * i + 1];
-   // float z = f_buffer[8 * i + 2]; 
-   // float depth = viewProj(2, 0) * x + viewProj(2, 1) * y + viewProj(2, 2) * z;
-   // int depthInt = static_cast<int>(depth * 4096.0f);
-   float depth = (viewProj(2, 0) * f_buffer[8 * i + 0] +  // viewProj[2]
-                  viewProj(2, 1) * f_buffer[8 * i + 1] +  // viewProj[6]
-                  viewProj(2, 2) * f_buffer[8 * i + 2]) *
-                 4096.0f;  // viewProj[10]
-    SizeList[i] = static_cast<int>(depth);
+    int depth = (x * m_data->m_floatBuffer[8 * i + 0] + y * m_data->m_floatBuffer[8 * i + 1] +
+                 z * m_data->m_floatBuffer[8 * i + 2]) *
+                4096;
+    sizeList[i] = depth;
+
     if (depth > maxDepth) maxDepth = depth;
-    if (depth < minDepth) minDepth = depth; 
-    if (i<10) SPDLOG_INFO("depth {} {} ",i, depth);
-  }
-
-float depthInv = (65535.0f) / (maxDepth - minDepth);
-  int ArrayMax = 65536;
-  QVector<uint32_t> Counts0(65536, 0);
-
-  for (int i = 0; i < vertexCount; i++) {
-    SizeList[i] = static_cast<int>((SizeList[i] - minDepth) * depthInv); 
-    Counts0[SizeList[i]]++;
-  }
-
-  QVector<uint32_t> Starts0(ArrayMax, 0);
-  for (int i = 1; i < ArrayMax; i++) Starts0[i] = Starts0[i - 1] + Counts0[i - 1];
-  
-  QByteArray depthIndexData(vertexCount * sizeof(quint32), 0);
-  quint32* depthIndex = reinterpret_cast<quint32*>(depthIndexData.data());
-  //QVector<uint32_t> depthIndex(vertexCount, 0);
-  for (int i = 0; i < vertexCount; i++) {
-    depthIndex[Starts0[SizeList[i]]++] = i;
+    if (depth < minDepth) minDepth = depth;
   } 
+  constexpr int sizeSort = 256 * 256;
+  // This is a 16 bit single-pass counting sort
+  float depthInv = (sizeSort) / (maxDepth - minDepth);
+  std::vector<int> counts0(sizeSort); 
+  // normalize depth 
+  std::vector<unsigned int> normalizedDepths = sizeList | std::views::transform([&](unsigned int& val) {
+    val = std::floor((val - minDepth) * depthInv);
+    counts0[val]++;  // count occurrences
+    return val;
+  }) | std::ranges::to<std::vector>(); 
+  std::vector<int> starts0(sizeSort);
+  for (int i = 1; i < sizeSort; i++) starts0[i] = starts0[i - 1] + counts0[i - 1];
 
-  lastProj = viewProj;
-  if (!mIBO.isCreated()) {
-    mIBO = QOpenGLBuffer(QOpenGLBuffer::IndexBuffer);
-    if (!mIBO.create()) {
-      SPDLOG_ERROR("Failed to create index buffer");
-      return;
+  for (int i = 0; i < vertexCount; i++) {
+    depthIndex[starts0[sizeList[i]]++] = i;
+  } 
+  setDepthIndex(depthIndex);
+}
+
+
+void GsRenderObject::resizeGL(int w, int h) {
+  QOpenGLExtraFunctions* f = QOpenGLContext::currentContext()->extraFunctions();
+  GLfloat tabFloat[] = {static_cast<GLfloat>(focalWidth), static_cast<GLfloat>(focalHeight)};
+  f->glUniform2fv(m_focalLoc, 1, tabFloat);
+  m_projectionMatrix = getProjectionMatrix(focalWidth, focalHeight, w, h);
+  GLfloat innerTab[] = {static_cast<GLfloat>(w), static_cast<GLfloat>(h)};
+  f->glUniform2fv(m_viewPortLoc, 1, innerTab);
+  f->glViewport(0, 0, w, h);
+  f->glUniformMatrix4fv(m_projMatrixLoc, 1, false, m_projectionMatrix.data());
+}
+
+ void GsRenderObject::initializeGL() {
+  // QOpenGLDebugLogger* logger = new QOpenGLDebugLogger(this);
+  // connect(logger, &QOpenGLDebugLogger::messageLogged, [&](const QOpenGLDebugMessage&
+  // debugMessage) { qCritical() << debugMessage; }); logger->initialize(); // initializes in
+  // the current context, i.e. ctx logger->startLogging(QOpenGLDebugLogger::SynchronousLogging);
+  QOpenGLExtraFunctions* f = QOpenGLContext::currentContext()->extraFunctions();
+  //  m_program.addShaderFromSourceCode(QOpenGLShader::Vertex, ShaderSource::vertex);
+  //  m_program.addShaderFromSourceCode(QOpenGLShader::Fragment, ShaderSource::fragment);
+  m_program.addCacheableShaderFromSourceFile(QOpenGLShader::Vertex,
+                                             ":/resources/shaders/AnimateGS.vert");
+  m_program.addCacheableShaderFromSourceFile(QOpenGLShader::Fragment,
+                                             ":/resources/shaders/AnimateGS.frag");
+  m_program.link();
+  m_program.bind();
+  // Create a VAO. Not strictly required for ES 3, but it is for plain OpenGL.
+  if (m_vao.create()) m_vao.bind();
+  f->glDisable(GL_DEPTH_TEST);  // Disable depth testing
+  f->glEnable(GL_BLEND);
+  f->glBlendFuncSeparate(GL_ONE_MINUS_DST_ALPHA, GL_ONE, GL_ONE_MINUS_DST_ALPHA, GL_ONE);
+  m_projMatrixLoc = m_program.uniformLocation("projection");
+  m_viewPortLoc = m_program.uniformLocation("viewport");
+  m_focalLoc = m_program.uniformLocation("focal");
+  m_viewLoc = m_program.uniformLocation("view");
+  // positions
+  const std::array<float, 8> triangleVertices = {-2, -2, 2, -2, 2, 2, -2, 2};
+  m_vertexBuffer.create();
+  f->glBindBuffer(GL_ARRAY_BUFFER, m_vertexBuffer.bufferId());
+  f->glBufferData(GL_ARRAY_BUFFER, 8 * 4, triangleVertices.data(), GL_STATIC_DRAW);
+  const int a_position = m_program.attributeLocation("position");
+  f->glEnableVertexAttribArray(a_position);
+  f->glBindBuffer(GL_ARRAY_BUFFER, m_vertexBuffer.bufferId());
+  f->glVertexAttribPointer(a_position, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
+  f->glBindTexture(GL_TEXTURE_2D, m_texture.textureId());
+  auto u_textureLocation = m_program.uniformLocation("u_texture");
+  f->glUniform1i(u_textureLocation, 0);
+  m_indexBuffer.create();
+  const int a_index = m_program.attributeLocation("index");
+  f->glEnableVertexAttribArray(a_index);
+  f->glBindBuffer(GL_ARRAY_BUFFER, m_indexBuffer.bufferId());
+  f->glVertexAttribIPointer(a_index, 1, GL_INT, false, 0);
+  f->glVertexAttribDivisor(a_index, 1);
+}
+
+void GsRenderObject::setTextureData(const std::vector<unsigned int>& texdata, int texwidth,
+                                    int texheight) {
+  QOpenGLExtraFunctions* f = QOpenGLContext::currentContext()->extraFunctions();
+  f->glBindTexture(GL_TEXTURE_2D, m_texture.textureId());
+  f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+  f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+  f->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32UI, texwidth, texheight, 0, GL_RGBA_INTEGER,
+                  GL_UNSIGNED_INT, texdata.data());
+  f->glActiveTexture(GL_TEXTURE0);
+  f->glBindTexture(GL_TEXTURE_2D, m_texture.textureId());
+}
+int GsRenderObject::floatToHalf(float val) {
+  unsigned int f;
+  memcpy(&f, &val, 4);
+  int sign = (f >> 31) & 0x0001;
+  int exp = (f >> 23) & 0x00ff;
+  int frac = f & 0x007fffff;
+  int newExp = 0;
+  if (exp < 113) {
+    newExp = 0;
+    frac |= 0x00800000;
+    frac = frac >> (113 - exp);
+    if (frac & 0x01000000) {
+      newExp = 1;
+      frac = 0;
     }
-    mIBO.setUsagePattern(QOpenGLBuffer::DynamicDraw);
-  }
-
-  mVAO.bind();
-  mIBO.bind();
-  mIBO.allocate(depthIndexData.constData(), depthIndexData.size());
-
-  // Setup vertex attributes if not already done
-  if (m_aIndexLoc == -1) {
-    m_aIndexLoc = mShaderProgram->attributeLocation("index");
-    if (m_aIndexLoc != -1) {
-      mShaderProgram->enableAttributeArray(m_aIndexLoc);
-      glVertexAttribIPointer(m_aIndexLoc, 1, GL_UNSIGNED_INT, 0, nullptr);
-      glVertexAttribDivisor(m_aIndexLoc, 1);
-    }
-  }
-
-  mIBO.release();
-  mVAO.release();
-  // Create and configure Index Buffer
-  /*  auto indexBuffer = std::make_unique<QOpenGLBuffer>(QOpenGLBuffer::IndexBuffer);
-  // auto indexBuffer = new QOpenGLBuffer(QOpenGLBuffer::IndexBuffer);
-  if (indexBuffer->create()) {
-    indexBuffer->bind();
-    m_aIndexLoc = mShaderProgram->attributeLocation("index");
-    mShaderProgram->enableAttributeArray(m_aIndexLoc);
-    // Use glVertexAttribIPointer directly as QOpenGLShaderProgram::setAttributeBuffer doesn't
-    // support GL_INT for attributes
-    glVertexAttribIPointer(m_aIndexLoc, 1, GL_INT, 0, nullptr);
-    // JS: gl.vertexAttribDivisor(a_index, 1);
-    glVertexAttribDivisor(m_aIndexLoc, 1);
-    indexBuffer->setUsagePattern(QOpenGLBuffer::DynamicDraw);
-    //indexBuffer->allocate(depthIndex.constData(), depthIndex.size() * 4);
-    indexBuffer->allocate(depthIndexData.constData(), depthIndexData.size());
-
+  } else if (exp < 142) {
+    newExp = exp - 112;
   } else {
-    SPDLOG_ERROR("Failed to create index buffer.");
-    mVAO.release();
-    return;
-  }*/
-  // return DepthIndex;
-}
-
-void GsRenderObject::draw() {  /// need to fix
-  if (!mShaderProgram) {
-    SPDLOG_ERROR("Shader program is not available.");
-    return;
-  } 
-  QMatrix4x4 inv2 = viewMatrix.inverted();
-  // // float m_jumpDelta = 0;
-  //  inv2.translate(0.0f, -m_jumpDelta, 0.0f);
-  //  inv2.rotate(-0.1f * m_jumpDelta, 1.0f, 0.0f, 0.0f);
-  QMatrix4x4 actualViewMatrix = inv2.inverted();
-
-  QMatrix4x4 viewProj = mProjectionMatrix * actualViewMatrix;
-  RunSort(viewProj);
-
-  mShaderProgram->bind();
-  mVAO.bind();
-  mShaderProgram->setUniformValue("view", viewMatrix);
-  // glUniformMatrix4fv
-  mShaderProgram->setUniformValue("projection", mProjectionMatrix);
-  mShaderProgram->setUniformValue("viewport", QVector2D(mViewPort->width(), mViewPort->height()));
-  mShaderProgram->setUniformValue("focal", QVector2D(m_camera.fx, m_camera.fy)); 
- if (mTexture && mTexture->isCreated()) {
-    glActiveTexture(GL_TEXTURE0);
-    mTexture->bind();
-    mShaderProgram->setUniformValue("u_texture", 0);
-    glClear(GL_COLOR_BUFFER_BIT);
-    glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, vertexCount); 
-   //glDrawArraysInstanced(GL_POINTS, 0, 1, vertexCount);
+    newExp = 31;
+    frac = 0;
   }
-  mVAO.release();
-  // glBindTexture(GL_TEXTURE_2D, 0);
-  mShaderProgram->release(); 
+  return (sign << 15) | (newExp << 10) | (frac >> 13);
 }
-void GsRenderObject::resizeGL(int w, int h, QRect* mvp)   {  // need to fix
-  // JS: const downsample = ... devicePixelRatio
-  // Using QWindow::devicePixelRatio()
-  mViewPort = mvp;
-  // JS: gl.uniform2fv(u_focal, new Float32Array([camera.fx, camera.fy]));
- // mShaderProgram->setUniformValue("focal", QVector2D(m_camera.fx, m_camera.fy));
+void GsRenderObject::rotateMatrix(std::mdspan<float, std::extents<std::size_t, 4, 4> > matrix,
+                                  float rad, float x,
+                  float y, float z) {
+  float len = std::hypot(x, y, z);
+  x /= len;
+  y /= len;
+  z /= len;
+  float s = std::sin(rad);
+  float c = std::cos(rad);
+  float t = 1 - c;
+  float b00 = x * x * t + c;
+  float b01 = y * x * t + z * s;
+  float b02 = z * x * t - y * s;
+  float b10 = x * y * t - z * s;
+  float b11 = y * y * t + c;
+  float b12 = z * y * t + x * s;
+  float b20 = x * z * t + y * s;
+  float b21 = y * z * t - x * s;
+  float b22 = z * z * t + c;
+  matrix[std::array{0, 0}] = matrix[std::array{0, 0}] * b00 + matrix[std::array{1, 0}] * b01 +
+                             matrix[std::array{2, 0}] * b02;
+  matrix[std::array{0, 1}] = matrix[std::array{0, 1}] * b00 + matrix[std::array{1, 1}] * b01 +
+                             matrix[std::array{2, 1}] * b02;
+  matrix[std::array{0, 2}] = matrix[std::array{0, 2}] * b00 + matrix[std::array{1, 2}] * b01 +
+                             matrix[std::array{2, 2}] * b02;
+  matrix[std::array{0, 3}] = matrix[std::array{0, 3}] * b00 + matrix[std::array{1, 3}] * b01 +
+                             matrix[std::array{2, 3}] * b02;
 
-  // JS: projectionMatrix = getProjectionMatrix(...)
-  mProjectionMatrix = getProjectionMatrix(m_camera.fx, m_camera.fy, w, h);
+  matrix[std::array{1, 0}] = matrix[std::array{0, 0}] * b10 + matrix[std::array{1, 0}] * b11 +
+                             matrix[std::array{2, 0}] * b12;
+  matrix[std::array{1, 1}] = matrix[std::array{0, 1}] * b10 + matrix[std::array{1, 1}] * b11 +
+                             matrix[std::array{2, 1}] * b12;
+  matrix[std::array{1, 2}] = matrix[std::array{0, 2}] * b10 + matrix[std::array{1, 2}] * b11 +
+                             matrix[std::array{2, 2}] * b12;
+  matrix[std::array{1, 3}] = matrix[std::array{0, 3}] * b10 + matrix[std::array{1, 3}] * b11 +
+                             matrix[std::array{2, 3}] * b12;
 
-  // JS: gl.uniform2fv(u_viewport, new Float32Array([innerWidth, innerHeight]));
- // mShaderProgram->setUniformValue("viewport", QVector2D(mViewPort->width(), mViewPort->height()));
-
-  // JS: gl.uniformMatrix4fv(u_projection, false, projectionMatrix);
- // mShaderProgram->setUniformValue("projection", mProjectionMatrix);
-  SPDLOG_INFO("GsRenderObject::resizeGL {}, {}, mvp {}, {}", w, h, mViewPort->width(), mViewPort->height());
+  matrix[std::array{2, 0}] = matrix[std::array{0, 0}] * b20 + matrix[std::array{1, 0}] * b21 +
+                             matrix[std::array{2, 0}] * b22;
+  matrix[std::array{2, 1}] = matrix[std::array{0, 1}] * b20 + matrix[std::array{1, 1}] * b21 +
+                             matrix[std::array{2, 1}] * b22;
+  matrix[std::array{2, 2}] = matrix[std::array{0, 2}] * b20 + matrix[std::array{1, 2}] * b21 +
+                             matrix[std::array{2, 2}] * b22;
+  matrix[std::array{2, 3}] = matrix[std::array{0, 3}] * b20 + matrix[std::array{1, 3}] * b21 +
+                             matrix[std::array{2, 3}] * b22;
+}
+void GsRenderObject::translateMatrix(std::mdspan<float, std::extents<std::size_t, 4, 4> > matrix, float x, float y, float z) {
+  matrix[std::array{3, 0}] +=
+      matrix[std::array{0, 0}] * x + matrix[std::array{1, 0}] * y + matrix[std::array{2, 0}] * z;
+  matrix[std::array{3, 1}] +=
+      matrix[std::array{0, 1}] * x + matrix[std::array{1, 1}] * y + matrix[std::array{2, 1}] * z;
+  matrix[std::array{3, 2}] +=
+      matrix[std::array{0, 2}] * x + matrix[std::array{1, 2}] * y + matrix[std::array{2, 2}] * z;
+  matrix[std::array{3, 3}] +=
+      matrix[std::array{0, 3}] * x + matrix[std::array{1, 3}] * y + matrix[std::array{2, 3}] * z;
 }
 
 }  // namespace nimagna
