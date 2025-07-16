@@ -7,6 +7,7 @@
 #include <QtOpenGL/QOpenGLPaintDevice>
 #include <Rendering/GltfRenderObject.h>
 #include <Rendering/GsRenderObject.h>
+#include <Rendering/GeoGsRenderObject.h>
 namespace nimagna {
 
 RenderObjectManager::RenderObjectManager() {
@@ -120,21 +121,7 @@ bool RenderObjectManager::render() {
   } else {
     mRenderFramebuffer->bind();
   }
-
-    glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glDepthMask(GL_TRUE);
-    glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_LESS);
-    glEnable(GL_FRAMEBUFFER_SRGB);
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_BACK);
-    glFrontFace(GL_CCW);
-    glDepthRange(0.0, 1.0);
-
-
+  
   // render objects only if there's render data for the projection and the list has more than one
   // object (i.e. storyboard + more) or the storyboard is the only item and has content
   if (mCurrentRenderData && (mRenderObjectsList.size() > 0)) {
@@ -182,8 +169,7 @@ void RenderObjectManager::addTextureObject(const QString& filename) {
   if (qImage.isNull()) {
     SPDLOG_ERROR("No image: {}", filename);
     return;
-  }
-
+  } 
   std::shared_ptr<TextureRenderObject> renderObject =
       std::make_shared<TextureRenderObject>(TextureRenderObject::kDefaultTextureTarget, qImage);
   renderObject->setDisplayName(filename);
@@ -201,6 +187,26 @@ void RenderObjectManager::addGltfObject(const QString& filename) {
   mRenderObjectsList.emplace_back(renderObject);
 }
 void RenderObjectManager::addGsObject(const QString& filename) {
+  std::shared_ptr<GeoGsRenderObject> renderObject = std::make_shared<GeoGsRenderObject>(
+      GeoGsRenderObject::kDefaultTextureTarget, filename);  //, mContext->screen()->geometry());
+  renderObject->setDisplayName(filename);
+  // mGsRenderObject = renderObject;
+  // add object to data structure
+  mGsRenderObjectsList.emplace_back(renderObject);
+  mRenderObjectsList.emplace_back(renderObject);
+    isGSobjectAttached = true;
+}
+void RenderObjectManager::addGeoGsObject(const QString& filename) {
+  std::shared_ptr<GeoGsRenderObject> renderObject = std::make_shared<GeoGsRenderObject>(
+      GeoGsRenderObject::kDefaultTextureTarget, filename);  //, mContext->screen()->geometry());
+  renderObject->setDisplayName(filename);
+  // mGsRenderObject = renderObject;
+  // add object to data structure
+  mGsRenderObjectsList.emplace_back(renderObject);
+  mRenderObjectsList.emplace_back(renderObject);
+    isGSobjectAttached = true;
+}
+void RenderObjectManager::addPlyObject(const QString& filename) {
   std::shared_ptr<GsRenderObject> renderObject = std::make_shared<GsRenderObject>(filename);//, mContext->screen()->geometry());
   renderObject->setDisplayName(filename);
   // mGsRenderObject = renderObject;

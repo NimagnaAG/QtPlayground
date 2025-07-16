@@ -26,8 +26,7 @@ class OpenGlWidget : public QOpenGLWidget, protected QOpenGLFunctions_4_0_Core {
   void enableTrackball(bool enabled); 
  signals:
   void initialized();
-
- protected:
+   
   // initialize
   void initializeGL() override;
   // paint

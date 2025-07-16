@@ -44,6 +44,7 @@ class RENDERING_API TextureRenderObject : public RenderObject, protected QOpenGL
   // draws the render object.
   virtual void draw() override;
   virtual void resizeGL(int w, int h) override{};
+  virtual void keyPressEvent(QKeyEvent* event) override {};
   // get the source's texture and mask size
   bool isEmpty() const;
   // normally, the TextureRenderObject renders its own texture. If this flag is set, the TRO assumes

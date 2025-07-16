@@ -10,5 +10,8 @@
 		<file>resources/shaders/AnimateGS2.frag</file>
 		<file>resources/shaders/AnimateGS.vert</file> 
 		<file>resources/shaders/AnimateGS2.vert</file>
+		<file>resources/shaders/geogs.vert</file>
+		<file>resources/shaders/geogs.frag</file>
+		<file>resources/shaders/geogs.geom</file>
 	</qresource>
 </RCC>

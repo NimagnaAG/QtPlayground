@@ -1,5 +1,5 @@
-#version 420
-
+#version 400
+#extension GL_ARB_shading_language_packing : enable
 layout(location = 0) in vec2 position;
 layout(location = 1) in int index;
 

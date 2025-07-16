@@ -165,8 +165,9 @@ void OpenGlWidget::keyPressEvent(QKeyEvent* event) {
     updateRendering();
   }
   if (mRenderer->renderObjectManager()->isGSobjectAttached) {
+    SPDLOG_INFO("Gs keyPressEvent");
     for (const auto& obj : mRenderer->renderObjectManager()->mGsRenderObjectsList) {
-     // obj->resizeGL(w, h);  // or any method on RenderObject
+      obj->keyPressEvent(event);  // or any method on RenderObject
     }
   }
 }

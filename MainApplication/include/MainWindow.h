@@ -25,6 +25,8 @@ class MainWindow : public QMainWindow {
 
   virtual ~MainWindow();
 
+ protected:
+  bool event(QEvent* event) override;
  private slots:
 
   // --- Menu actions  ---
@@ -32,6 +34,7 @@ class MainWindow : public QMainWindow {
   void on_actionLoad_triggered();
   void on_test_triggered();
   void on_gsload_triggered();
+  void on_plyload_triggered();
   // --- Callback from OpenGL window once initialized
   void onOpenGlWidgetInitialized() const;
 

@@ -36,27 +36,38 @@ void MainWindow::on_actionLoad_triggered() {
 
 void MainWindow::on_test_triggered() {
   SPDLOG_INFO("User action: test");
-  const QString fileName = QFileDialog::getOpenFileName(this, tr("Open Show"), "", tr("GLTF (*.gltf;*.png)"));
+  const QString fileName =
+      QFileDialog::getOpenFileName(this, tr("Open Show"), "", tr("GLTF (*.gltf;*.png)"));
   SPDLOG_INFO("Filename action: " + fileName);
   if (!fileName.isNull()) {
     // not canceled
     mRenderer->loadGLTF(fileName);
   }
-  
 }
 void MainWindow::on_gsload_triggered() {
   SPDLOG_INFO("User action: Load Gaussian Splat Video");
-  const QString fileName = QFileDialog::getOpenFileName(this, tr("Open Show"), "", tr("V-splat (*.vsplat;*.splat;*.ply)"));
+  const QString fileName = QFileDialog::getOpenFileName(this, tr("Open Show"), "",
+                                                        tr("V-splat (*.vsplat;*.splat;*.ply)"));
   SPDLOG_INFO("Filename action: " + fileName);
   if (!fileName.isNull()) {
     // not canceled
-    mRenderer->loadGS(fileName); 
-  } 
-}  
+    mRenderer->loadGS(fileName);
+  }
+}
+void MainWindow::on_plyload_triggered() {
+  SPDLOG_INFO("User action: Load PLY");
+  const QString fileName =
+      QFileDialog::getOpenFileName(this, tr("Open Show"), "", tr("PLY (*.ply)"));
+  SPDLOG_INFO("Filename action: " + fileName);
+  if (!fileName.isNull()) {
+    // not canceled
+    mRenderer->loadPLY(fileName);
+  }
+}
 void MainWindow::onOpenGlWidgetInitialized() const {
   mRenderer->start(mUI.openGLWidget->context());
   mUI.openGLWidget->update();
-  SPDLOG_INFO("ainWindow::onOpenGlWidgetInitialized() " );
+  SPDLOG_INFO("ainWindow::onOpenGlWidgetInitialized() ");
 }
 
 void MainWindow::connectSignalsAndSlots() {
@@ -64,5 +75,15 @@ void MainWindow::connectSignalsAndSlots() {
   connect(mUI.openGLWidget, &OpenGlWidget::initialized, this,
           &MainWindow::onOpenGlWidgetInitialized);
 }
-
+bool MainWindow::event(QEvent* event) {
+  if (event->type() == QEvent::KeyPress) {
+    QKeyEvent* keyEvent = static_cast<QKeyEvent*>(event);
+    SPDLOG_INFO("Key Pressed: {}", keyEvent->key());
+    mUI.openGLWidget->keyPressEvent(keyEvent);
+  } /*else if (event->type() == QEvent::Resize) {
+    QSize newSize = static_cast<QResizeEvent*>(event)->size();
+    mUI.openGLWidget->resizeGL(newSize.width(), newSize.height());
+  }*/
+  return true;
+}
 }  // namespace nimagna

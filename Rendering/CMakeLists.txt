@@ -32,6 +32,8 @@ set(Header_Files
     "include/Rendering/json.hpp"
     "include/Rendering/GltfRenderObject.h" 
     "include/Rendering/GsRenderObject.h"
+    "include/Rendering/GeoGsRenderObject.h"
+    "include/Rendering/PlyRenderObject.h"
 )
 source_group("Header Files" FILES ${Header_Files})
 
@@ -43,7 +45,9 @@ set(Source_Files
     "src/RenderObjectManager.cpp"
     "src/TextureRenderObject.cpp" 
     "src/GsRenderObject.cpp" 
+    "src/GeoGsRenderObject.cpp" 
     "src/GltfRenderObject.cpp"
+    "src/PlyRenderObject.cpp"
 
 )
 source_group("Source Files" FILES ${Source_Files})

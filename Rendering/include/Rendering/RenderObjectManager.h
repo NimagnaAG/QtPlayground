@@ -45,6 +45,8 @@ class RENDERING_API RenderObjectManager final : public QObject {
   void addTextureObject(const QString& filename);
   void addGltfObject(const QString& filename);
   void addGsObject(const QString& filename);
+  void addGeoGsObject(const QString& filename);
+  void addPlyObject(const QString& filename);
   const RenderObjectList& renderObjects() const;
   const RenderObjectList& activeRenderObjects() const;
   bool isActiveRenderObject(const std::shared_ptr<RenderObject> renderObject) const;

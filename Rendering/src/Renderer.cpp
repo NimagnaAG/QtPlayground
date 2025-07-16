@@ -66,6 +66,12 @@ void RenderWorker::loadGS(QString filename){
   mRenderObjectManager->addGsObject(filename ); 
   SPDLOG_INFO("A Gaussian Splat Should be displayed now..: " + filename);
 }
+// loads a GS / video
+void RenderWorker::loadPLY(QString filename) {
+  if (!mRenderObjectManager) return;
+  mRenderObjectManager->addPlyObject(filename);
+  SPDLOG_INFO("A Gaussian Splat PLY Should be displayed now..: " + filename);
+}
 
 void RenderWorker::render() {
   // slot called by the timer to trigger a render iteration
@@ -106,6 +112,7 @@ Renderer::Renderer() {
   connect(this, &Renderer::loadImage, mRenderWorker.get(), &RenderWorker::loadImage);
   connect(this, &Renderer::loadGLTF, mRenderWorker.get(), &RenderWorker::loadGLTF);
   connect(this, &Renderer::loadGS, mRenderWorker.get(), &RenderWorker::loadGS);
+  connect(this, &Renderer::loadPLY, mRenderWorker.get(), &RenderWorker::loadPLY);
   connect(mRenderWorker.get(), &RenderWorker::renderFrameReady, this,
           &Renderer::renderFrameUpdated);
 
@@ -218,5 +225,8 @@ void Renderer::addImage(QString filename) {
 
 void Renderer::addGS(QString filename) {
   emit loadGS(filename);
+}
+void Renderer::addPLY(QString filename) {
+  emit loadPLY(filename);
 }
 }  // namespace nimagna

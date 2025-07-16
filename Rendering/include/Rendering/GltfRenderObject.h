@@ -48,6 +48,7 @@ class RENDERING_API GltfRenderObject : public RenderObject, protected QOpenGLFun
 
   // draws the render object.
   virtual void draw() override;
+  virtual void keyPressEvent(QKeyEvent* event) override {};
   virtual void resizeGL(int w, int h ) override{};
   // get the source's texture and mask size
   bool isEmpty() const;

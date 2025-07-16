@@ -42,6 +42,7 @@ class RenderWorker final : public QObject {
   void loadGLTF(QString filename);
   // loads a v-splat/GS 
   void loadGS(QString filename);
+  void loadPLY(QString filename);
  signals:
   // signals a rendered frame to the consumer, e.g. the virtual camera
   void renderFrameReady();
@@ -84,6 +85,7 @@ class RENDERING_API Renderer final : public QObject {
 
   void addImage(QString filename);
   void addGS(QString filename);
+  void addPLY(QString filename);
 
   // access to the ROM
   std::shared_ptr<RenderObjectManager> renderObjectManager() const;
@@ -103,6 +105,7 @@ class RENDERING_API Renderer final : public QObject {
   void loadImage(QString filename);
   void loadGLTF(QString filename); 
   void loadGS(QString filename);
+  void loadPLY(QString filename);
  private:
   // The render worker performs the rendering
   std::unique_ptr<RenderWorker> mRenderWorker;

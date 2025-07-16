@@ -59,6 +59,7 @@ void GsRenderObject::initialize() {
 }
 
 void GsRenderObject::LoadSplatGs(const QString& location) {
+  SPDLOG_INFO("in LoadSplatGs");
   // Clear previous data
     std::vector<unsigned char> data = readFromFile(location.toStdString());
 
@@ -68,20 +69,18 @@ void GsRenderObject::LoadSplatGs(const QString& location) {
     depthIndex.resize(vertexCount + 1);
 
     texheight = std::ceil((float)(2 * vertexCount) / (float)texwidth);  // Set to your desired height
-    m_data = std::make_unique<SplatData>(data);
-    textureCoro.setData(std::make_unique<SplatData>(data));
-    textureCoro.generateTexture();
+    m_data = std::make_unique<SplatData>(data);  
     initializeGL(); 
+
     setView(viewMatrix[std::array{0, 2}], viewMatrix[std::array{1, 2}],
             viewMatrix[std::array{2, 2}]);
+    isDataReady = true;
+
+    RenderObject::initialize();
 } 
 
 void GsRenderObject::LoadAnimateGs(const QString& location) {}
-  
-void GsRenderObject::draw() {
- // worldInteraction(viewMatrix);
-  setView(viewMatrix[std::array{0, 2}], viewMatrix[std::array{1, 2}],  viewMatrix[std::array{2, 2}]);
-}
+
 //
 //void GsRenderObject::viewChanged() { 
 //    QOpenGLExtraFunctions* f = QOpenGLContext::currentContext()->extraFunctions();
@@ -122,18 +121,18 @@ void GsRenderObject::sortByDepth(float x, float y, float z) {
     depthIndex[starts0[sizeList[i]]++] = i;
   } 
   setDepthIndex(depthIndex);
-}
-
+} 
 
 void GsRenderObject::resizeGL(int w, int h) {
   QOpenGLExtraFunctions* f = QOpenGLContext::currentContext()->extraFunctions();
   GLfloat tabFloat[] = {static_cast<GLfloat>(focalWidth), static_cast<GLfloat>(focalHeight)};
   f->glUniform2fv(m_focalLoc, 1, tabFloat);
   m_projectionMatrix = getProjectionMatrix(focalWidth, focalHeight, w, h);
-  GLfloat innerTab[] = {static_cast<GLfloat>(w), static_cast<GLfloat>(h)};
-  f->glUniform2fv(m_viewPortLoc, 1, innerTab);
+  //GLfloat innerTab[] = {static_cast<GLfloat>(w), static_cast<GLfloat>(h)};
+  //f->glUniform2fv(m_viewPortLoc, 1, mViewProjectionMatrix.data());
   f->glViewport(0, 0, w, h);
   f->glUniformMatrix4fv(m_projMatrixLoc, 1, false, m_projectionMatrix.data());
+  SPDLOG_INFO("GsRenderObject resizeGL done ");
 }
 
  void GsRenderObject::initializeGL() {
@@ -141,6 +140,7 @@ void GsRenderObject::resizeGL(int w, int h) {
   // connect(logger, &QOpenGLDebugLogger::messageLogged, [&](const QOpenGLDebugMessage&
   // debugMessage) { qCritical() << debugMessage; }); logger->initialize(); // initializes in
   // the current context, i.e. ctx logger->startLogging(QOpenGLDebugLogger::SynchronousLogging);
+
   QOpenGLExtraFunctions* f = QOpenGLContext::currentContext()->extraFunctions();
   //  m_program.addShaderFromSourceCode(QOpenGLShader::Vertex, ShaderSource::vertex);
   //  m_program.addShaderFromSourceCode(QOpenGLShader::Fragment, ShaderSource::fragment);
@@ -179,7 +179,16 @@ void GsRenderObject::resizeGL(int w, int h) {
   f->glVertexAttribDivisor(a_index, 1);
 }
 
-void GsRenderObject::setTextureData(const std::vector<unsigned int>& texdata, int texwidth,
+ void GsRenderObject::draw() {
+   if (isDataReady) {
+    
+     // worldInteraction(viewMatrix);
+     setView(viewMatrix[std::array{0, 2}], viewMatrix[std::array{1, 2}],
+             viewMatrix[std::array{2, 2}]);
+   }
+ }
+
+ void GsRenderObject::setTextureData(const std::vector<unsigned int>& texdata, int texwidth,
                                     int texheight) {
   QOpenGLExtraFunctions* f = QOpenGLContext::currentContext()->extraFunctions();
   f->glBindTexture(GL_TEXTURE_2D, m_texture.textureId());
@@ -236,17 +245,12 @@ void GsRenderObject::rotateMatrix(std::mdspan<float, std::extents<std::size_t, 4
   float b20 = x * z * t + y * s;
   float b21 = y * z * t - x * s;
   float b22 = z * z * t + c;
-  matrix[std::array{0, 0}] = matrix[std::array{0, 0}] * b00 + matrix[std::array{1, 0}] * b01 +
-                             matrix[std::array{2, 0}] * b02;
-  matrix[std::array{0, 1}] = matrix[std::array{0, 1}] * b00 + matrix[std::array{1, 1}] * b01 +
-                             matrix[std::array{2, 1}] * b02;
-  matrix[std::array{0, 2}] = matrix[std::array{0, 2}] * b00 + matrix[std::array{1, 2}] * b01 +
-                             matrix[std::array{2, 2}] * b02;
-  matrix[std::array{0, 3}] = matrix[std::array{0, 3}] * b00 + matrix[std::array{1, 3}] * b01 +
-                             matrix[std::array{2, 3}] * b02;
+  matrix[std::array{0, 0}] = matrix[std::array{0, 0}] * b00 + matrix[std::array{1, 0}] * b01 + matrix[std::array{2, 0}] * b02;
+  matrix[std::array{0, 1}] = matrix[std::array{0, 1}] * b00 + matrix[std::array{1, 1}] * b01 + matrix[std::array{2, 1}] * b02;
+  matrix[std::array{0, 2}] = matrix[std::array{0, 2}] * b00 + matrix[std::array{1, 2}] * b01 + matrix[std::array{2, 2}] * b02;
+  matrix[std::array{0, 3}] = matrix[std::array{0, 3}] * b00 + matrix[std::array{1, 3}] * b01 + matrix[std::array{2, 3}] * b02;
 
-  matrix[std::array{1, 0}] = matrix[std::array{0, 0}] * b10 + matrix[std::array{1, 0}] * b11 +
-                             matrix[std::array{2, 0}] * b12;
+  matrix[std::array{1, 0}] = matrix[std::array{0, 0}] * b10 + matrix[std::array{1, 0}] * b11 + matrix[std::array{2, 0}] * b12;
   matrix[std::array{1, 1}] = matrix[std::array{0, 1}] * b10 + matrix[std::array{1, 1}] * b11 +
                              matrix[std::array{2, 1}] * b12;
   matrix[std::array{1, 2}] = matrix[std::array{0, 2}] * b10 + matrix[std::array{1, 2}] * b11 +
@@ -264,14 +268,159 @@ void GsRenderObject::rotateMatrix(std::mdspan<float, std::extents<std::size_t, 4
                              matrix[std::array{2, 3}] * b22;
 }
 void GsRenderObject::translateMatrix(std::mdspan<float, std::extents<std::size_t, 4, 4> > matrix, float x, float y, float z) {
-  matrix[std::array{3, 0}] +=
-      matrix[std::array{0, 0}] * x + matrix[std::array{1, 0}] * y + matrix[std::array{2, 0}] * z;
-  matrix[std::array{3, 1}] +=
-      matrix[std::array{0, 1}] * x + matrix[std::array{1, 1}] * y + matrix[std::array{2, 1}] * z;
-  matrix[std::array{3, 2}] +=
-      matrix[std::array{0, 2}] * x + matrix[std::array{1, 2}] * y + matrix[std::array{2, 2}] * z;
-  matrix[std::array{3, 3}] +=
-      matrix[std::array{0, 3}] * x + matrix[std::array{1, 3}] * y + matrix[std::array{2, 3}] * z;
+  matrix[std::array{3, 0}] += matrix[std::array{0, 0}] * x + matrix[std::array{1, 0}] * y + matrix[std::array{2, 0}] * z;
+  matrix[std::array{3, 1}] += matrix[std::array{0, 1}] * x + matrix[std::array{1, 1}] * y + matrix[std::array{2, 1}] * z;
+  matrix[std::array{3, 2}] += matrix[std::array{0, 2}] * x + matrix[std::array{1, 2}] * y + matrix[std::array{2, 2}] * z;
+  matrix[std::array{3, 3}] += matrix[std::array{0, 3}] * x + matrix[std::array{1, 3}] * y + matrix[std::array{2, 3}] * z;
 }
+std::vector<unsigned int> GsRenderObject::generateTexture() {
+  std::vector<unsigned int> texdata;
 
+  // Here we convert from a .splat file buffer into a texture
+  // With a little bit more foresight perhaps this texture file
+  // should have been the native format as it'd be very easy to
+  // load it into webgl.
+
+  int texwidth = 2048;
+  int texheight;
+  texheight = std::ceil((float)(2 * vertexCount) / (float)texwidth);  // Set to your desired height
+  texdata.resize(texwidth * texheight * 4);
+
+  // For reinterpretation
+  float* texdata_f = reinterpret_cast<float*>(texdata.data());
+  uint8_t* texdata_c = reinterpret_cast<uint8_t*>(texdata.data());
+
+  for (int i = 0; i < vertexCount; ++i) {
+    // x, y, z
+    texdata_f[8 * i + 0] = m_data->m_floatBuffer[8 * i + 0];
+    texdata_f[8 * i + 1] = m_data->m_floatBuffer[8 * i + 1];
+    texdata_f[8 * i + 2] = m_data->m_floatBuffer[8 * i + 2];
+
+    // r, g, b, a
+    texdata_c[4 * (8 * i + 7) + 0] = m_data->m_ucharBuffer[32 * i + 24 + 0];
+    texdata_c[4 * (8 * i + 7) + 1] = m_data->m_ucharBuffer[32 * i + 24 + 1];
+    texdata_c[4 * (8 * i + 7) + 2] = m_data->m_ucharBuffer[32 * i + 24 + 2];
+    texdata_c[4 * (8 * i + 7) + 3] = m_data->m_ucharBuffer[32 * i + 24 + 3];
+
+    // scale
+    float scale[3] = {m_data->m_floatBuffer[8 * i + 3], m_data->m_floatBuffer[8 * i + 4],  m_data->m_floatBuffer[8 * i + 5]};
+
+    // quaternion
+    float rot[4] = {(static_cast<int>(m_data->m_ucharBuffer[32 * i + 28 + 0]) - 128) / 128.0f,
+                    (static_cast<int>(m_data->m_ucharBuffer[32 * i + 28 + 1]) - 128) / 128.0f,
+                    (static_cast<int>(m_data->m_ucharBuffer[32 * i + 28 + 2]) - 128) / 128.0f,
+                    (static_cast<int>(m_data->m_ucharBuffer[32 * i + 28 + 3]) - 128) / 128.0f};
+
+    // Compute the matrix product of S and R (M = S * R)
+    float M[9] = {1.0f - 2.0f * (rot[2] * rot[2] + rot[3] * rot[3]),
+                  2.0f * (rot[1] * rot[2] + rot[0] * rot[3]),
+                  2.0f * (rot[1] * rot[3] - rot[0] * rot[2]),
+
+                  2.0f * (rot[1] * rot[2] - rot[0] * rot[3]),
+                  1.0f - 2.0f * (rot[1] * rot[1] + rot[3] * rot[3]),
+                  2.0f * (rot[2] * rot[3] + rot[0] * rot[1]),
+
+                  2.0f * (rot[1] * rot[3] + rot[0] * rot[2]),
+                  2.0f * (rot[2] * rot[3] - rot[0] * rot[1]),
+                  1.0f - 2.0f * (rot[1] * rot[1] + rot[2] * rot[2])};
+    for (int j = 0; j < 9; ++j) {
+      M[j] *= scale[j / 3];
+    }
+
+    float sigma[6] = {
+        M[0] * M[0] + M[3] * M[3] + M[6] * M[6], M[0] * M[1] + M[3] * M[4] + M[6] * M[7],
+        M[0] * M[2] + M[3] * M[5] + M[6] * M[8], M[1] * M[1] + M[4] * M[4] + M[7] * M[7],
+        M[1] * M[2] + M[4] * M[5] + M[7] * M[8], M[2] * M[2] + M[5] * M[5] + M[8] * M[8]};
+
+    texdata[8 * i + 4] = packHalf2x16(4 * sigma[0], 4 * sigma[1]);
+    texdata[8 * i + 5] = packHalf2x16(4 * sigma[2], 4 * sigma[3]);
+    texdata[8 * i + 6] = packHalf2x16(4 * sigma[4], 4 * sigma[5]);
+  }
+  return texdata;
+}
+void GsRenderObject::invertMatrix(std::mdspan<float, std::extents<std::size_t, 4, 4>> matrix) {
+  float b00 = matrix[std::array{0, 0}] * matrix[std::array{1, 1}] -
+              matrix[std::array{0, 1}] * matrix[std::array{1, 0}];
+  float b01 = matrix[std::array{0, 0}] * matrix[std::array{1, 2}] -
+              matrix[std::array{0, 2}] * matrix[std::array{1, 0}];
+  float b02 = matrix[std::array{0, 0}] * matrix[std::array{1, 3}] -
+              matrix[std::array{0, 3}] * matrix[std::array{1, 0}];
+  float b03 = matrix[std::array{0, 1}] * matrix[std::array{1, 2}] -
+              matrix[std::array{0, 2}] * matrix[std::array{1, 1}];
+
+  float b04 = matrix[std::array{0, 1}] * matrix[std::array{1, 3}] -
+              matrix[std::array{0, 3}] * matrix[std::array{1, 1}];
+  float b05 = matrix[std::array{0, 2}] * matrix[std::array{1, 3}] -
+              matrix[std::array{0, 3}] * matrix[std::array{1, 2}];
+  float b06 = matrix[std::array{2, 0}] * matrix[std::array{3, 1}] -
+              matrix[std::array{2, 1}] * matrix[std::array{3, 0}];
+  float b07 = matrix[std::array{2, 0}] * matrix[std::array{3, 2}] -
+              matrix[std::array{2, 2}] * matrix[std::array{3, 0}];
+
+  float b08 = matrix[std::array{2, 0}] * matrix[std::array{3, 3}] -
+              matrix[std::array{2, 3}] * matrix[std::array{3, 0}];
+  float b09 = matrix[std::array{2, 1}] * matrix[std::array{3, 2}] -
+              matrix[std::array{2, 2}] * matrix[std::array{3, 1}];
+  float b10 = matrix[std::array{2, 1}] * matrix[std::array{3, 3}] -
+              matrix[std::array{2, 3}] * matrix[std::array{3, 1}];
+  float b11 = matrix[std::array{2, 2}] * matrix[std::array{3, 3}] -
+              matrix[std::array{2, 3}] * matrix[std::array{3, 2}];
+  float det = b00 * b11 - b01 * b10 + b02 * b09 + b03 * b08 - b04 * b07 + b05 * b06;
+  if (det < 0.0000001) {
+    return;
+  } 
+  std::array<float, 16> arr{(matrix[std::array{1, 1}] * b11 - matrix[std::array{1, 2}] * b10 +
+                             matrix[std::array{1, 3}] * b09) /
+                                det,
+                            (matrix[std::array{0, 2}] * b10 - matrix[std::array{0, 1}] * b11 -
+                             matrix[std::array{0, 3}] * b09) /
+                                det,
+                            (matrix[std::array{3, 1}] * b05 - matrix[std::array{3, 2}] * b04 +
+                             matrix[std::array{3, 3}] * b03) /
+                                det,
+                            (matrix[std::array{2, 2}] * b04 - matrix[std::array{2, 1}] * b05 -
+                             matrix[std::array{2, 3}] * b03) /
+                                det,
+
+                            (matrix[std::array{1, 2}] * b08 - matrix[std::array{1, 0}] * b11 -
+                             matrix[std::array{1, 3}] * b07) /
+                                det,
+                            (matrix[std::array{0, 0}] * b11 - matrix[std::array{0, 2}] * b08 +
+                             matrix[std::array{0, 3}] * b07) /
+                                det,
+                            (matrix[std::array{3, 2}] * b02 - matrix[std::array{3, 0}] * b05 -
+                             matrix[std::array{3, 3}] * b01) /
+                                det,
+                            (matrix[std::array{2, 0}] * b05 - matrix[std::array{2, 2}] * b02 +
+                             matrix[std::array{2, 3}] * b01) /
+                                det,
+
+                            (matrix[std::array{1, 0}] * b10 - matrix[std::array{1, 1}] * b08 +
+                             matrix[std::array{1, 3}] * b06) /
+                                det,
+                            (matrix[std::array{0, 1}] * b08 - matrix[std::array{0, 0}] * b10 -
+                             matrix[std::array{0, 3}] * b06) /
+                                det,
+                            (matrix[std::array{3, 0}] * b04 - matrix[std::array{3, 1}] * b02 +
+                             matrix[std::array{3, 3}] * b00) /
+                                det,
+                            (matrix[std::array{2, 1}] * b02 - matrix[std::array{2, 0}] * b04 -
+                             matrix[std::array{2, 3}] * b00) /
+                                det,
+
+                            (matrix[std::array{1, 1}] * b07 - matrix[std::array{1, 0}] * b09 -
+                             matrix[std::array{1, 2}] * b06) /
+                                det,
+                            (matrix[std::array{0, 0}] * b09 - matrix[std::array{0, 1}] * b07 +
+                             matrix[std::array{0, 2}] * b06) /
+                                det,
+                            (matrix[std::array{3, 1}] * b01 - matrix[std::array{3, 0}] * b03 -
+                             matrix[std::array{3, 2}] * b00) /
+                                det,
+                            (matrix[std::array{2, 0}] * b03 - matrix[std::array{2, 1}] * b01 +
+                             matrix[std::array{2, 2}] * b00) /
+                                det};
+
+  std::memcpy(matrix.data_handle(), arr.data(), sizeof(float) * 16);
+}
 }  // namespace nimagna

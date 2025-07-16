@@ -36,6 +36,7 @@
     <addaction name="actionLoad"/>
     <addaction name="test"/>
     <addaction name="gsload"/>
+    <addaction name="plyload"/>
    </widget>
    <addaction name="menuFile"/>
   </widget>
@@ -66,12 +67,23 @@
 		    <string>&amp;Load V-splat / GS</string>
 	    </property>
 	    <property name="toolTip">
-		    <string>Load Video gaussian splat, single GS or PLY from file</string>
+		    <string>Load Video gaussian splat, single GS from file</string>
 	    </property>
 	    <property name="shortcutContext">
 		    <enum>Qt::ShortcutContext::ApplicationShortcut</enum>
 	    </property>
     </action>
+	 <action name="plyload">
+		 <property name="text">
+			 <string>&amp;Load GS PLY file</string>
+		 </property>
+		 <property name="toolTip">
+			 <string>Load PLY from file</string>
+		 </property>
+		 <property name="shortcutContext">
+			 <enum>Qt::ShortcutContext::ApplicationShortcut</enum>
+		 </property>
+	 </action>
  </widget>
  <customwidgets>
   <customwidget>

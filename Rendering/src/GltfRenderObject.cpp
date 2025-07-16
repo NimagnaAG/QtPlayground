@@ -330,7 +330,19 @@ void GltfRenderObject::draw() {
    if (!mShaderProgram) {
     SPDLOG_ERROR("Shader program is not available.");
     return;
-   }
+   } 
+     glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
+     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+     glEnable(GL_BLEND);
+     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+     glDepthMask(GL_TRUE);
+     glEnable(GL_DEPTH_TEST);
+     glDepthFunc(GL_LESS);
+     glEnable(GL_FRAMEBUFFER_SRGB);
+     glEnable(GL_CULL_FACE);
+     glCullFace(GL_BACK);
+     glFrontFace(GL_CCW);
+     glDepthRange(0.0, 1.0); 
    mShaderProgram->bind();
 
    mRotationAngle += 0.5f;  // Adjust the speed of rotation as needed, framerate dependant atm
