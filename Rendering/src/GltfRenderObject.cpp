@@ -266,7 +266,7 @@ void GltfRenderObject::draw(const QMatrix4x4& viewMatrix, const QMatrix4x4& proj
   glCullFace(GL_BACK);
   glFrontFace(GL_CCW);
 
-  // bind and update shader program
+  // bind and update shader program with model, view, and projection matrices
   mShaderProgram->bind();
   mShaderProgram->setUniformValue("model", modelMatrix());
   mShaderProgram->setUniformValue("view", viewMatrix);
@@ -275,7 +275,7 @@ void GltfRenderObject::draw(const QMatrix4x4& viewMatrix, const QMatrix4x4& proj
   // render each mesh
   for (size_t i = 0; i < mVAOs.size(); ++i) {
     if (mTextureIDs.size() > i) {
-      // Bind the appropriate texture for this part of the mesh
+      // Bind the appropriate texture for this part of the mesh only if it exists
       glActiveTexture(GL_TEXTURE0);
       glBindTexture(GL_TEXTURE_2D, mTextureIDs[i]);
       mShaderProgram->setUniformValue("texture_diffuse1", 0);

@@ -43,14 +43,8 @@ class RENDERING_API GeoGsRenderObject : public RenderObject, protected QOpenGLFu
   friend class OpenGlWidget;
 
  public:
-  // The source can deliver either RGB, RGBA or BGRA format
-  enum class SourcePixelFormat { RGB, RGBA, BGRA };
-  enum class TextureTarget { Target2D, TargetRectangle };
-  static inline TextureTarget kDefaultTextureTarget = TextureTarget::Target2D;
-
   GeoGsRenderObject() = delete;
-  GeoGsRenderObject(TextureTarget type);
-  GeoGsRenderObject(TextureTarget type, const QString& location);
+  GeoGsRenderObject(const QString& location);
   // not copyable or movable
   GeoGsRenderObject(const GeoGsRenderObject& other) = delete;
   GeoGsRenderObject& operator=(const GeoGsRenderObject& other) = delete;
@@ -60,161 +54,45 @@ class RENDERING_API GeoGsRenderObject : public RenderObject, protected QOpenGLFu
   // initializes the render object.
   virtual void initialize() override;
 
- 
   // draws the render object.
-  virtual void draw(const QMatrix4x4& viewMatrix, const QMatrix4x4& projectionMatrix) override; 
+  virtual void draw(const QMatrix4x4& viewMatrix, const QMatrix4x4& projectionMatrix) override;
 
-  private:
-  void LoadSplatGs(const QString& location);
-  void LoadAnimateGs(const QString& location) {}; 
-
-  void sort(const QMatrix4x4& viewProj);
-  bool isControl = false;
-  
-struct Vertex {
-    QVector3D center;
-    QVector3D scale;
-    QVector4D rotation;
-    QVector4D color;
-  };
-
+ private:
+  void initializeGL();
   std::vector<unsigned int> generateTexture();
-  QString mGsLocation = "";
-  int vertexCount = 0;
-  int rowLength = 32;
-  void initializeGL();    
-  std::vector<QVector3D> m_positions;
-  std::vector<QVector3D> m_scales;
-  std::vector<QVector4D> m_rotations;
-  std::vector<QVector4D> m_colors;
-  QOpenGLBuffer m_ebo; 
-  bool isDataReady = false;
-  int m_uViewLoc, m_uProjLoc, m_uFocalLoc;
-  int viewportw = 1000, viewporth = 1000;
 
+  // the file to be loaded
+  const QString mGsLocation = "";
+
+  // the data structure to hold the splat data from loading
   struct SplatData {
     std::vector<QVector3D> positions;
     std::vector<QVector3D> scales;
     std::vector<QVector4D> rotations;
     std::vector<QVector4D> colors;
   };
+  SplatData mSplatData;
+  // loading functions
   SplatData loadSplatFile(const QString& filePath);
-  int focalWidth = 1500;
-  int focalHeight = 1500;
+  void LoadSplatGs(const QString& location);
+  void LoadAnimateGs(const QString& location) {};
 
-   virtual void useExternalTexture(bool useExternal);
-  // checks if the render object is visible on the screen
+  // sort splats and update index buffer
+  void sortSplatsAndUpdateIndexBufferObject(const QMatrix4x4& viewProj);
 
-  // the texture's source size
-  const QSize& textureSourceSize() const;
-  const QSize& maskSourceSize() const;
-  // the source's format (RGB, RGBA, BGRA) and type (static, streaming)
-  SourcePixelFormat sourcePixelFormat() const;
-  // the texture's and mask's real size
-  const QSize& textureSize() const;
-  const QSize& maskSize() const;
-
-  // get the texture target
-  const TextureTarget target() const { return mTextureTarget; }
-
-  // the texture units for color and separate mask textures
-  static const GLint colorTextureUnit() { return mColorTextureUnit; }
-  static const GLint maskTextureUnit() { return mMaskTextureUnit; }
-  // static helpers to translate target and pixel format to OpenGL and Qt constants
-  static QOpenGLTexture::Target qGlTarget(TextureTarget target);
-  static GLint glTarget(TextureTarget target);
-  static QOpenGLTexture::PixelFormat qGlSourceFormat(SourcePixelFormat format);
-  static GLint glSourceFormat(SourcePixelFormat format);
-
-  bool hasSeparateMask() const;
-  void enableSeparateMask(bool separateMaskEnabled, bool blurEnabled);
-
-  // uploads the VertexData to GPU. Must be called after changing mVBD data
-  void uploadVertexData();
-  // change the mask size
-  // update the mask texture data
-  // set the position of a particular vertex. does not upload the data to the GPU -> call
-  // uploadVertexData after changing the vertex data
- /// void setVertexPosition(int vertexId, int index, float value);   
+  // the shader program
   std::unique_ptr<QOpenGLShaderProgram> mShaderProgram;
+  // the locations of the view and projection matrices in the shader
+  int m_uViewLoc, m_uProjLoc;
 
- private:
   // initialize the shader program
   void setupShaderProgram();
-  // updates the texture coordinates if size has changed or flip flag has changed
-  QMutex mAccessMutex;
-
-  // helpers related to the texture target
-  const QOpenGLTexture::Target qGlTarget() const;
-  const GLint glTarget() const;
-  // helpers related to the pixel format
-  const QOpenGLTexture::PixelFormat qGlSourceFormat() const;
-  const GLint glSourceFormat() const;
-  static QImage::Format qImageFormatFromSourcePixelFormat(SourcePixelFormat format);
-  static const std::map<SourcePixelFormat, QImage::Format> kSourcePixelFormatToQImageFormatMap;
-
-  // The texture's type (2D or Rect)
-  const TextureTarget mTextureTarget;
   // the Vertex Array Object holds all vertex relevant data
   QOpenGLVertexArrayObject mVAO;
   // the vertex buffer object
   QOpenGLBuffer mVBO;
   // the index buffer with the vertex indices for each triangle
   QOpenGLBuffer mIBO;
-  // struct holding the data per vertex
-  
-
-  // the source format can be RGB, RGBA, or BGRA
-  SourcePixelFormat mSourcePixelFormat = SourcePixelFormat::RGB;
-
-  // the texture for static sources
-  std::unique_ptr<QOpenGLTexture> mTexture;
-  // the separate texture for the mask
-  bool mSeparateMaskTextureEnabled = false;
-  std::unique_ptr<QOpenGLTexture> mMaskTexture;
-
-  // the texture source's width and height
-  QSize mTextureSourceSize;
-  // the source's mask width and height
-  QSize mMaskSourceSize;
-  // the texture width and height
-  QSize mTextureSize;
-  // the mask width and height
-  QSize mMaskSize;
-
-  // flag set if external texture is used.
-  bool mUseExternalTexture = false;
-  // render upside down
-  bool mFlipVertically = false;
-  // render output horizontally flipped
-  bool mFlipHorizontally = false;
-  // the transformation matrix location in the shader
-  int mWorldTransformationShaderPosition = -1;
-  // flag to enable or disable the blurring in the keyed_texture shader
-  bool mCameraMaskBlurring = false;
-
-  // texture units for color and mask texture
-  static inline const GLint mColorTextureUnit = 2;
-  static inline const GLint mMaskTextureUnit = 3;
-
-  // As a performance optimization, texture sizes as multiples of four are considered to have better
-  // performance. And on really old hardware, textures had to have a power of two size. It is
-  // unlikely that this is still required since it is not a requirement since OpenGL 2.0.
-  enum class TextureTarget2dRequirement { None, MultipleOfFour, PowerOfTwo };
-  const TextureTarget2dRequirement mTextureTarget2dRequirement =
-      TextureTarget2dRequirement::MultipleOfFour;
-  // get next higher power of two number.
-  static int nextPowerOfTwo(int input);
-  // get next multiple of four number
-  static int nextMultipleOfFour(int input);
-
-  // void renderModel();
-  //  std::vector<QOpenGLVertexArrayObject> mVAOs;
- // std::vector<std::unique_ptr<QOpenGLVertexArrayObject>> mVAOs;
-   QMatrix4x4 mTransformMatrix;
-  QMatrix4x4 mProjectionMatrix;
-  GLuint mTextureID = 5;
-  std::vector<GLuint> mTextureIDs; 
 };
 
 }  // namespace nimagna

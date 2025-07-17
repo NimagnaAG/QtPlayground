@@ -180,12 +180,10 @@ void RenderObjectManager::addObject(RenderObjectType type, const QString& filena
       renderObject = std::make_shared<GltfRenderObject>(filename);
       break;
     case nimagna::RenderObjectManager::RenderObjectType::kGs:
-      renderObject =
-          std::make_shared<GeoGsRenderObject>(GeoGsRenderObject::kDefaultTextureTarget, filename);
+      renderObject = std::make_shared<GeoGsRenderObject>(filename);
       break;
     case nimagna::RenderObjectManager::RenderObjectType::kGeoGs:
-      renderObject =
-          std::make_shared<GeoGsRenderObject>(GeoGsRenderObject::kDefaultTextureTarget, filename);
+      renderObject = std::make_shared<GeoGsRenderObject>(filename);
       break;
     case nimagna::RenderObjectManager::RenderObjectType::kPly:
       renderObject = std::make_shared<GsRenderObject>(filename);

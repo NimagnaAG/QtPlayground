@@ -21,20 +21,15 @@
 #include <vector>
 
 namespace nimagna {
-GeoGsRenderObject::GeoGsRenderObject(TextureTarget type) : mTextureTarget(type) {
-  enableSeparateMask(false, false);
-}
 
-GeoGsRenderObject::GeoGsRenderObject(TextureTarget type, const QString& location)
-    : GeoGsRenderObject(type) {
-  mGsLocation = location;
+GeoGsRenderObject::GeoGsRenderObject(const QString& location) : mGsLocation(location) {
   initialize();
 }
 void GeoGsRenderObject::initialize() {
   initializeOpenGLFunctions();
 
-  // define model matrix
-  setScale(0.01f);
+  // set initial scale to 0.1f
+  setScale(0.1f);
 
   // load file
   QString fileExtension = mGsLocation.split(".").last();
@@ -42,25 +37,88 @@ void GeoGsRenderObject::initialize() {
   if (fileExtension.contains(splatExt)) {
     LoadSplatGs(mGsLocation);
     SPDLOG_INFO("splat file extension load");
-  } else if (fileExtension.contains("vsplat"))
+  } else if (fileExtension.contains("vsplat")) {
     LoadAnimateGs(mGsLocation);
-  else {
-    LoadSplatGs(mGsLocation);
+  } else {
     SPDLOG_ERROR("file extension wrong:{} ", fileExtension.toStdString());
+    LoadSplatGs(mGsLocation);
   }
-  // Finally, build and compile the shader program
+  // create vertex buffer object
+  mVBO = QOpenGLBuffer(QOpenGLBuffer::VertexBuffer);
+  if (!mVBO.create()) {
+    SPDLOG_ERROR("Failed to create VertexBufferObject");
+  }
+  mVBO.setUsagePattern(QOpenGLBuffer::StaticDraw);
+
+  // the data per vertex
+  struct VertexData {
+    QVector3D center;
+    QVector3D scale;
+    QVector4D rotation;
+    QVector4D color;
+  };
+  std::vector<VertexData> vertices;
+  for (size_t i = 0; i < mSplatData.positions.size(); ++i) {
+    vertices.push_back({mSplatData.positions[i], mSplatData.scales[i], mSplatData.rotations[i],
+                        mSplatData.colors[i]});
+  }
+  // allocate the vertex buffer object with the vertex data
+  mVBO.bind();
+  mVBO.allocate(vertices.data(), int(vertices.size() * sizeof(VertexData)));
+
+  // create and bind vertex array object
+  if (!mVAO.isCreated()) {
+    SPDLOG_DEBUG("Creating VertexArrayObject");
+    mVAO.create();
+  }
+  mVAO.bind();
+
+  // Create a new buffer for the indexes
+  mIBO = QOpenGLBuffer(QOpenGLBuffer::IndexBuffer);  // Mind: use 'IndexBuffer' here
+  if (!mIBO.create()) {
+    SPDLOG_ERROR("Failed to create IndexBufferObject");
+  }
+  mIBO.setUsagePattern(QOpenGLBuffer::StaticDraw);
+
+  // Build and compile the shader program, get the variable locations
   setupShaderProgram();
+
+  int stride = sizeof(VertexData);
+  mShaderProgram->enableAttributeArray(0);
+  mShaderProgram->setAttributeBuffer(0, GL_FLOAT, offsetof(VertexData, center), 3, stride);
+  mShaderProgram->enableAttributeArray(1);
+  mShaderProgram->setAttributeBuffer(1, GL_FLOAT, offsetof(VertexData, scale), 3, stride);
+  mShaderProgram->enableAttributeArray(2);
+  mShaderProgram->setAttributeBuffer(2, GL_FLOAT, offsetof(VertexData, rotation), 4, stride);
+  mShaderProgram->enableAttributeArray(3);
+  mShaderProgram->setAttributeBuffer(3, GL_FLOAT, offsetof(VertexData, color), 4, stride);
+
+  // Note: I think the lines below do the same as the above lines...
+
+  // Set up vertex attribute pointers
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(VertexData),
+                        (void*)offsetof(VertexData, center));
+  glEnableVertexAttribArray(0);
+
+  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(VertexData),
+                        (void*)offsetof(VertexData, scale));
+  glEnableVertexAttribArray(1);
+
+  glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(VertexData),
+                        (void*)offsetof(VertexData, rotation));
+  glEnableVertexAttribArray(2);
+
+  glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, sizeof(VertexData),
+                        (void*)offsetof(VertexData, color));
+  glEnableVertexAttribArray(3);
+
   // Done
   RenderObject::initialize();
 }
 
 void GeoGsRenderObject::LoadSplatGs(const QString& location) {
   SPDLOG_INFO("in LoadSplatGs");
-  SplatData splats = loadSplatFile(location);
-  m_positions = splats.positions;
-  m_scales = splats.scales;
-  m_rotations = splats.rotations;
-  m_colors = splats.colors;
+  mSplatData = loadSplatFile(location);
 }
 
 void GeoGsRenderObject::setupShaderProgram() {
@@ -86,74 +144,19 @@ void GeoGsRenderObject::setupShaderProgram() {
   if (!mShaderProgram->bind()) {
     SPDLOG_ERROR("Failed to bind shader program! {}", mShaderProgram->log().toStdString());
   }
+
+  // get variable locations
   m_uViewLoc = mShaderProgram->uniformLocation("uView");
   m_uProjLoc = mShaderProgram->uniformLocation("uProj");
-  m_uFocalLoc = mShaderProgram->uniformLocation("uFocal");
-  // viewport is fixed to 1080x720!
+
+  // Note: Assuming focal length to be fixed. Is 1500x1500 a good value??????
+  auto focalPosition = mShaderProgram->uniformLocation("uFocal");
+  mShaderProgram->setUniformValue(focalPosition, QVector2D(1500, 1500));
+  // Attention: viewport is fixed to 1080x720!
   const auto viewportLocation = mShaderProgram->uniformLocation("uViewport");
   mShaderProgram->setUniformValue(viewportLocation, QVector2D(1080, 720));
-
-  mVBO = QOpenGLBuffer(QOpenGLBuffer::VertexBuffer);
-  if (!mVBO.create()) {
-    SPDLOG_ERROR("Failed to create VertexBufferObject");
-  }
-  mVBO.setUsagePattern(QOpenGLBuffer::StaticDraw);
-
-  if (!mVAO.isCreated()) {
-    SPDLOG_DEBUG("Creating VertexArrayObject");
-    mVAO.create();
-  }
-  mVAO.bind();
-
-  int stride = sizeof(Vertex);
-  // const int positionOffsetBytes = 0;
-  mShaderProgram->enableAttributeArray(0);
-  mShaderProgram->setAttributeBuffer(0, GL_FLOAT, offsetof(Vertex, center), 3, stride);
-  // const int scaleOffsetBytes = 3 * sizeof(float);
-  mShaderProgram->enableAttributeArray(1);
-  mShaderProgram->setAttributeBuffer(1, GL_FLOAT, offsetof(Vertex, scale), 3, stride);
-  // const int rotationOffsetBytes = scaleOffsetBytes + 3 * sizeof(float);
-  mShaderProgram->enableAttributeArray(2);
-  mShaderProgram->setAttributeBuffer(2, GL_FLOAT, offsetof(Vertex, rotation), 4, stride);
-
-  // const int colorOffsetBytes = rotationOffsetBytes + scaleOffsetBytes + 4 * sizeof(float);
-  mShaderProgram->enableAttributeArray(3);
-  mShaderProgram->setAttributeBuffer(3, GL_FLOAT, offsetof(Vertex, color), 4, stride);
-  mShaderProgram->link();
-  mShaderProgram->bind();
-
-  mVBO.bind();
-
-  std::vector<Vertex> vertices;
-  for (size_t i = 0; i < m_positions.size(); ++i) {
-    vertices.push_back({m_positions[i], m_scales[i], m_rotations[i], m_colors[i]});
-  }
-
-  mVBO.allocate(vertices.data(), int(vertices.size() * sizeof(Vertex)));
-
-  // Set up vertex attribute pointers
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, center));
-  glEnableVertexAttribArray(0);
-
-  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, scale));
-  glEnableVertexAttribArray(1);
-
-  glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex),
-                        (void*)offsetof(Vertex, rotation));
-  glEnableVertexAttribArray(2);
-
-  glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, color));
-  glEnableVertexAttribArray(3);
-
-  // Create and bind Index Buffer Object (EBO) if it exists
-
-  glEnable(GL_BLEND);
-  glBlendFunc(GL_ONE_MINUS_DST_ALPHA, GL_ONE);
-  glClearColor(0, 0, 0, 0);
-  isDataReady = true;
-
-  // mVAO.release();
 }
+
 void GeoGsRenderObject::draw(const QMatrix4x4& viewMatrix, const QMatrix4x4& projectionMatrix) {
   if (!mShaderProgram) {
     SPDLOG_ERROR("Shader program is not available.");
@@ -161,31 +164,28 @@ void GeoGsRenderObject::draw(const QMatrix4x4& viewMatrix, const QMatrix4x4& pro
   }
 
   // sort by depth depending on the view projection matrix
-  sort(viewMatrix * projectionMatrix);
+  sortSplatsAndUpdateIndexBufferObject(viewMatrix * projectionMatrix);
 
-  glClearColor(0, 0, 0, 0);
+  // bind shader and update the view/projection matrices
   mShaderProgram->bind();
-
   mShaderProgram->setUniformValue(m_uViewLoc, viewMatrix);
   mShaderProgram->setUniformValue(m_uProjLoc, projectionMatrix);
-  mShaderProgram->setUniformValue(m_uFocalLoc, QVector2D(focalWidth, focalHeight));
 
   mVAO.bind();
-  glDrawElements(GL_POINTS, int(m_positions.size()), GL_UNSIGNED_INT, 0);
-
-  glBindTexture(GL_TEXTURE_2D, 0);
-  // mVAO.release();
-  // mShaderProgram->release();
+  glDrawElements(GL_POINTS, int(mSplatData.positions.size()), GL_UNSIGNED_INT, 0);
+  mVAO.release();
+  mShaderProgram->release();
 }
 
-void GeoGsRenderObject::sort(const QMatrix4x4& viewProj) {
-  std::vector<uint32_t> indices(m_positions.size());
+void GeoGsRenderObject::sortSplatsAndUpdateIndexBufferObject(const QMatrix4x4& viewProj) {
+  // temporary index array for sorting
+  std::vector<uint32_t> indices(mSplatData.positions.size());
   std::iota(indices.begin(), indices.end(), 0);
 
   if (!viewProj.isIdentity()) {
     std::vector<std::pair<float, uint32_t>> depthIndex;
-    for (size_t i = 0; i < m_positions.size(); ++i) {
-      QVector4D pos4(m_positions[i], 1.0f);
+    for (size_t i = 0; i < mSplatData.positions.size(); ++i) {
+      QVector4D pos4(mSplatData.positions[i], 1.0f);
       QVector4D cam = viewProj * pos4;
       depthIndex.emplace_back(cam.z(), uint32_t(i));
     }
@@ -193,59 +193,16 @@ void GeoGsRenderObject::sort(const QMatrix4x4& viewProj) {
               [](const auto& a, const auto& b) { return a.first < b.first; });
     for (size_t i = 0; i < indices.size(); ++i) indices[i] = depthIndex[i].second;
   }
-  m_ebo = QOpenGLBuffer(QOpenGLBuffer::IndexBuffer);
-  if (!m_ebo.isCreated()) {
-    SPDLOG_DEBUG("Creating ebo");
-    m_ebo.create();
-  }
-  m_ebo.bind();
-  m_ebo.allocate(indices.data(), int(indices.size() * sizeof(uint32_t)));
+  // update indices
+  mIBO.bind();
+  mIBO.allocate(indices.data(), int(indices.size() * sizeof(uint32_t)));
 }
-
-// void GeoGsRenderObject::resizeGL(int w, int h) {
-//   QOpenGLExtraFunctions* f = QOpenGLContext::currentContext()->extraFunctions();
-//   GLfloat tabFloat[] = {static_cast<GLfloat>(focalWidth), static_cast<GLfloat>(focalHeight)};
-//   // m_projectionMatrix = getProjectionMatrix(focalWidth, focalHeight, w, h);
-//   // GLfloat innerTab[] = {static_cast<GLfloat>(w), static_cast<GLfloat>(h)};
-//   // f->glUniform2fv(m_viewPortLoc, 1, mViewProjectionMatrix.data());
-//   viewportw = w;
-//   viewporth = h;
-//   // f->glUniformMatrix4fv(m_projMatrixLoc, 1, false, m_projectionMatrix.data());
-//   SPDLOG_INFO("GeoGsRenderObject resizeGL done ");
-// }
-
-const std::map<GeoGsRenderObject::SourcePixelFormat, QImage::Format>
-    GeoGsRenderObject::kSourcePixelFormatToQImageFormatMap = {
-        {GeoGsRenderObject::SourcePixelFormat::RGB, QImage::Format::Format_RGB888},
-        {GeoGsRenderObject::SourcePixelFormat::RGBA, QImage::Format::Format_RGBA8888_Premultiplied},
-        {GeoGsRenderObject::SourcePixelFormat::BGRA,
-         QImage::Format::Format_RGBA8888_Premultiplied}};
 
 GeoGsRenderObject::~GeoGsRenderObject() {
   mVAO.destroy();
   mVBO.destroy();
   mIBO.destroy();
-  mTexture.reset();
-  mMaskTexture.reset();
   mShaderProgram.reset();
-
-  mTransformMatrix.setToIdentity();
-}
-
-bool GeoGsRenderObject::hasSeparateMask() const {
-  return mSeparateMaskTextureEnabled;
-}
-
-void GeoGsRenderObject::enableSeparateMask(bool separateMaskEnabled, bool blurEnabled) {
-  SPDLOG_DEBUG("Texture render object: Separate mask {} / Blur {}",
-               separateMaskEnabled ? "enabled" : "disabled", blurEnabled ? "enabled" : "disabled");
-  if (mSeparateMaskTextureEnabled != separateMaskEnabled) {
-    mSeparateMaskTextureEnabled = separateMaskEnabled;
-    if (mSeparateMaskTextureEnabled) {
-      mCameraMaskBlurring = blurEnabled;
-    }
-    initialize();
-  }
 }
 
 nimagna::GeoGsRenderObject::SplatData GeoGsRenderObject::loadSplatFile(const QString& filePath) {
@@ -257,7 +214,8 @@ nimagna::GeoGsRenderObject::SplatData GeoGsRenderObject::loadSplatFile(const QSt
     return result;
   }
   QByteArray data = file.readAll();
-  vertexCount = data.size() / rowLength;
+  const auto rowLength = 32;  // 3 (position) + 3 (scale) + 4 (color) + 4 (quaternion)
+  const auto vertexCount = data.size() / rowLength;
   const uint8_t* raw = reinterpret_cast<const uint8_t*>(data.constData());
 
   for (int i = 0; i < vertexCount; ++i) {
@@ -292,93 +250,6 @@ nimagna::GeoGsRenderObject::SplatData GeoGsRenderObject::loadSplatFile(const QSt
     result.rotations.emplace_back(qx, qy, qz, qw);
   }
   return result;
-}
-
-void GeoGsRenderObject::useExternalTexture(bool useExternal) {
-  SPDLOG_DEBUG("Using external texture for rendering");
-  mUseExternalTexture = useExternal;
-}
-
-const QSize& GeoGsRenderObject::textureSourceSize() const {
-  return mTextureSourceSize;
-}
-
-const QSize& GeoGsRenderObject::maskSourceSize() const {
-  return mMaskSourceSize;
-}
-
-const QSize& GeoGsRenderObject::textureSize() const {
-  return mTextureSize;
-}
-
-const QSize& GeoGsRenderObject::maskSize() const {
-  return mMaskSize;
-}
-
-GeoGsRenderObject::SourcePixelFormat GeoGsRenderObject::sourcePixelFormat() const {
-  return mSourcePixelFormat;
-}
-
-const QOpenGLTexture::Target GeoGsRenderObject::qGlTarget() const {
-  return qGlTarget(mTextureTarget);
-}
-
-QOpenGLTexture::Target GeoGsRenderObject::qGlTarget(TextureTarget target) {
-  return target == TextureTarget::Target2D ? QOpenGLTexture::Target2D
-                                           : QOpenGLTexture::TargetRectangle;
-}
-
-const GLint GeoGsRenderObject::glTarget() const {
-  return glTarget(mTextureTarget);
-}
-
-GLint GeoGsRenderObject::glTarget(TextureTarget target) {
-  return target == GeoGsRenderObject::TextureTarget::Target2D ? GL_TEXTURE_2D
-                                                              : GL_TEXTURE_RECTANGLE;
-}
-
-const QOpenGLTexture::PixelFormat GeoGsRenderObject::qGlSourceFormat() const {
-  return qGlSourceFormat(mSourcePixelFormat);
-}
-
-QOpenGLTexture::PixelFormat GeoGsRenderObject::qGlSourceFormat(SourcePixelFormat format) {
-  switch (format) {
-    case SourcePixelFormat::RGB:
-      return QOpenGLTexture::PixelFormat::RGB;
-    case SourcePixelFormat::RGBA:
-    case SourcePixelFormat::BGRA:
-      // Note: BGRA is interpreted as RGBA and transformed in the fragment shader!
-      return QOpenGLTexture::PixelFormat::RGBA;
-    default:
-      SPDLOG_ERROR("Unknown pixel format!");
-      assert(false);
-      break;
-  }
-  return QOpenGLTexture::PixelFormat::RGB;
-}
-
-GLint GeoGsRenderObject::glSourceFormat(SourcePixelFormat format) {
-  switch (format) {
-    case SourcePixelFormat::RGB:
-      return GL_RGB;
-    case SourcePixelFormat::RGBA:
-    case SourcePixelFormat::BGRA:
-      // Note: BGRA is interpreted as RGBA and transformed in the fragment shader!
-      return GL_RGBA;
-    default:
-      SPDLOG_ERROR("Unknown pixel format!");
-      assert(false);
-      break;
-  }
-  return GL_RGB;
-}
-
-const GLint GeoGsRenderObject::glSourceFormat() const {
-  return glSourceFormat(mSourcePixelFormat);
-}
-
-QImage::Format GeoGsRenderObject::qImageFormatFromSourcePixelFormat(SourcePixelFormat format) {
-  return kSourcePixelFormatToQImageFormatMap.at(format);
 }
 
 }  // namespace nimagna
