@@ -11,15 +11,19 @@
 
 namespace nimagna {
 
-/* The base class for all render objects (RO)
- *
- * Render objects relate 1:1 to a ShotComponent and are managed by the RenderObjectManager (ROM).
- * First, create the object, then add it to the ROM before setting content and starting.
- *
- * Current inheritance hierarchy is:
- *	RenderObject: basics like position, scale, etc
- *	-> TextureRenderObject: texture rendering (all OpenGL code)
- *	  -> FrameSourceRenderObject: use a frame source as texture source)
+/** The base class for all render objects (RO)
+
+  Render objects are managed by the RenderObjectManager (ROM) and render themselfs into the ROM's
+  framebuffer object.
+
+  Upon initialization, the render object is registered at the ROM and can be rendered. When
+  overwriting the initialize method, the base class' initialize method must be called to ensure full
+  initialization.
+
+  During rendering, the ROM prepares the render object with the current camera view/projection
+  matrix. This allows a render object to apply its own model matrix to the camera view to get the
+  full projection matrix and render itself into the framebuffer object.
+
  */
 class RENDERING_API RenderObject : public QObject {
   Q_OBJECT
@@ -41,21 +45,21 @@ class RENDERING_API RenderObject : public QObject {
   bool allowUpdates() const { return mAllowUpdates; }
   void setAllowUpdates(bool allow) { mAllowUpdates = allow; }
 
-  // draw the object. OpenGL context is active.
+  // Overwrite the following methods to implement a derived class:
+  // Draws the ob into the framebuffer object. This must ensure that the object sets up the OpenGL
+  // state such that it can render itself. The object cannot assume that the OpenGL state is
+  // preserved between two draw calls.
   virtual void draw() = 0;
-  virtual void keyPressEvent(QKeyEvent* event)=0;
+
+  // TODO: remove
+  virtual void keyPressEvent(QKeyEvent* event) = 0;
   virtual void resizeGL(int w, int h) = 0;
-  float alpha() const;
-  void setFallbackAlpha(float alphaValue);
+
   // get the model matrix
   const QMatrix4x4& getModelMatrix() const;
   // prepare for rendering
   void prepare(const QMatrix4x4& vp);
 
-  // the display name
-  void setDisplayName(const QString& displayName);
-  // get the display name
-  QString getDisplayName() const;
   // check if initialized
   bool isInitialized() const;
   bool readyForRendering() const { return mIsReadyForRendering; }
@@ -66,9 +70,10 @@ class RENDERING_API RenderObject : public QObject {
   void propertiesChanged();
 
  protected:
-  // the view/projection matrix
+  // the current camera view projection matrix. it is set by the RenderObjectManager using the
+  // prepare methods just before draw is called for rendering.
   QMatrix4x4 mViewProjectionMatrix;
-  // the model matrix
+  // the object's own model matrix defines the position, rotation, and scale of the object in the world coordinate system.
   QMatrix4x4 mModelMatrix;
 
  protected:
@@ -76,18 +81,12 @@ class RENDERING_API RenderObject : public QObject {
   bool mIsReadyForRendering = true;
 
  private:
-  // the display name
-  QString mDisplayName;
   // flag indicating if that render object is initialized
   bool mIsInitialized;
-  // the layer is a volatile member used
+  // the layer is a volatile member used to sort render objects in the rendering pipeline.
   int mLayer;
-  // alpha value being used if shot component is not available
-  float mFallbackAlpha = 1.0f;
   // allow updates flag
   bool mAllowUpdates = true;
-
-  QString mResourceIdentifier;
 };
 
 }  // namespace nimagna

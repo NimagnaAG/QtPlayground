@@ -26,6 +26,10 @@ namespace nimagna {
  should be considered as potentially dynamic. The RenderObjectManager::onOutputSettingsChanged is
  resposible to update the FBO if the rendering resolution changes.
 
+ Note: The rendering does not use depth by default. The ROM renders each object in the order they
+ are added - potentially rendering over each other. If a render object needs depth, it must enable
+ it itself and disable after rendering.
+
  The camera/world/object projection works as follows:
  - The RenderObjectManager uses the RenderData in mCurrentRenderData as the camera to world
  projection. This can be altered using the trackball and keyboard controls from the OpenGlWidget.

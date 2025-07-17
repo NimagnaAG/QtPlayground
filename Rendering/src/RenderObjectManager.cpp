@@ -179,7 +179,6 @@ void RenderObjectManager::addTextureObject(const QString& filename) {
   }
   std::shared_ptr<TextureRenderObject> renderObject =
       std::make_shared<TextureRenderObject>(TextureRenderObject::kDefaultTextureTarget, qImage);
-  renderObject->setDisplayName(filename);
 
   // add object to data structure
   mRenderObjectsList.emplace_back(renderObject);
@@ -188,7 +187,6 @@ void RenderObjectManager::addTextureObject(const QString& filename) {
 void RenderObjectManager::addGltfObject(const QString& filename) {
   std::shared_ptr<GltfRenderObject> renderObject =
       std::make_shared<GltfRenderObject>(GltfRenderObject::kDefaultTextureTarget, filename);
-  renderObject->setDisplayName(filename);
 
   // add object to data structure
   mRenderObjectsList.emplace_back(renderObject);
@@ -196,7 +194,6 @@ void RenderObjectManager::addGltfObject(const QString& filename) {
 void RenderObjectManager::addGsObject(const QString& filename) {
   std::shared_ptr<GeoGsRenderObject> renderObject = std::make_shared<GeoGsRenderObject>(
       GeoGsRenderObject::kDefaultTextureTarget, filename);  //, mContext->screen()->geometry());
-  renderObject->setDisplayName(filename);
   // mGsRenderObject = renderObject;
   // add object to data structure
   mGsRenderObjectsList.emplace_back(renderObject);
@@ -206,7 +203,6 @@ void RenderObjectManager::addGsObject(const QString& filename) {
 void RenderObjectManager::addGeoGsObject(const QString& filename) {
   std::shared_ptr<GeoGsRenderObject> renderObject = std::make_shared<GeoGsRenderObject>(
       GeoGsRenderObject::kDefaultTextureTarget, filename);  //, mContext->screen()->geometry());
-  renderObject->setDisplayName(filename);
   // mGsRenderObject = renderObject;
   // add object to data structure
   mGsRenderObjectsList.emplace_back(renderObject);
@@ -216,7 +212,6 @@ void RenderObjectManager::addGeoGsObject(const QString& filename) {
 void RenderObjectManager::addPlyObject(const QString& filename) {
   std::shared_ptr<GsRenderObject> renderObject =
       std::make_shared<GsRenderObject>(filename);  //, mContext->screen()->geometry());
-  renderObject->setDisplayName(filename);
   // mGsRenderObject = renderObject;
   // add object to data structure
   mGsRenderObjectsList.emplace_back(renderObject);

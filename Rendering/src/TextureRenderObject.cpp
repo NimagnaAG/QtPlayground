@@ -229,7 +229,7 @@ void TextureRenderObject::draw() {
   mShaderProgram->setUniformValue(mWorldTransformationShaderPosition, mvp);
 
   // set alpha transparency value [0.0, 1.0]
-  mShaderProgram->setUniformValue("alphaTransparency", static_cast<GLfloat>(alpha()));
+  mShaderProgram->setUniformValue("alphaTransparency", static_cast<GLfloat>(mAlpha));
   // need to swap R and B channel for BGRA source
   mShaderProgram->setUniformValue(
       "swapRGB",
@@ -467,7 +467,7 @@ void TextureRenderObject::changeMaskSize(QSize size) {
   const auto sourceHeight = size.height();
   SPDLOG_DEBUG("Change mask size to {}x{}", sourceWidth, sourceHeight);
   if (!hasSeparateMask()) {
-    SPDLOG_ERROR("Set mask size without separate mask enabled on {}", getDisplayName());
+    SPDLOG_ERROR("Set mask size without separate mask enabled!");
     return;
   }
   assert(hasSeparateMask());

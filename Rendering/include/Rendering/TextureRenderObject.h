@@ -172,6 +172,8 @@ class RENDERING_API TextureRenderObject : public RenderObject, protected QOpenGL
   int mWorldTransformationShaderPosition = -1;
   // flag to enable or disable the blurring in the keyed_texture shader
   bool mCameraMaskBlurring = false;
+  // alpha value for transparency
+  float mAlpha = 1.0f;  
 
   // texture units for color and mask texture
   static inline const GLint mColorTextureUnit = 2;
