@@ -1,9 +1,10 @@
 #pragma once
 
-#include "Rendering/Rendering.h"
 #include <QtCore/QObject>
 #include <QtGui/QMatrix4x4>
 #include <vector>
+
+#include "Rendering/Rendering.h"
 
 namespace nimagna {
 

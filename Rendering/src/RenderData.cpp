@@ -8,7 +8,7 @@
 namespace nimagna {
 
 RenderData::ShotFraming2D::ShotFraming2D(float left, float right, float bottom, float top)
-    : mLeft(left), mRight(right), mBottom(bottom), mTop(top){};
+    : mLeft(left), mRight(right), mBottom(bottom), mTop(top) {};
 
 RenderData::ShotFraming2D RenderData::ShotFraming2D::operator*(float timeFactor) const {
   return ShotFraming2D(mLeft * timeFactor, mRight * timeFactor, mBottom * timeFactor,
@@ -62,8 +62,7 @@ RenderData::RenderData(RenderData&& other) noexcept {
 RenderData::RenderData(const RenderData& other)
     : mShotFraming2D(other.mShotFraming2D),
       mShotFraming3D(other.mShotFraming3D),
-      mRenderMode(other.mRenderMode) {
-}
+      mRenderMode(other.mRenderMode) {}
 
 RenderData& RenderData::operator=(const RenderData& other) {
   if (this == &other) return *this;
@@ -110,7 +109,7 @@ QMatrix4x4 RenderData::projectionMatrix() const {
     QMatrix4x4 proj;
     const float aspectRatio = 1.0f;
     const float nearPlane = 0.1f;
-    const float farPlane = 0.1f;
+    const float farPlane = 100.f;
     proj.perspective(framing.fieldOfViewAngle(), aspectRatio, nearPlane, farPlane);
     projM = proj * view;
   }
