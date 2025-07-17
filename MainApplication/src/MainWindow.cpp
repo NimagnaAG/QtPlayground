@@ -30,7 +30,7 @@ void MainWindow::on_actionLoad_triggered() {
       QFileDialog::getOpenFileName(this, tr("Open Show"), "", tr("Image Files (*.png;*.jpg)"));
   if (!fileName.isNull()) {
     // not canceled
-    mRenderer->loadImage(fileName);
+    mRenderer->addObject(RenderObjectManager::RenderObjectType::kTexture, fileName);
   }
 }
 
@@ -41,7 +41,7 @@ void MainWindow::on_test_triggered() {
   SPDLOG_INFO("Filename action: " + fileName);
   if (!fileName.isNull()) {
     // not canceled
-    mRenderer->loadGLTF(fileName);
+    mRenderer->addObject(RenderObjectManager::RenderObjectType::kGltf, fileName);
   }
 }
 void MainWindow::on_gsload_triggered() {
@@ -51,7 +51,7 @@ void MainWindow::on_gsload_triggered() {
   SPDLOG_INFO("Filename action: " + fileName);
   if (!fileName.isNull()) {
     // not canceled
-    mRenderer->loadGS(fileName);
+    mRenderer->addObject(RenderObjectManager::RenderObjectType::kGs, fileName);
   }
 }
 void MainWindow::on_plyload_triggered() {
@@ -61,7 +61,7 @@ void MainWindow::on_plyload_triggered() {
   SPDLOG_INFO("Filename action: " + fileName);
   if (!fileName.isNull()) {
     // not canceled
-    mRenderer->loadPLY(fileName);
+    mRenderer->addObject(RenderObjectManager::RenderObjectType::kPly, fileName);
   }
 }
 void MainWindow::onOpenGlWidgetInitialized() const {

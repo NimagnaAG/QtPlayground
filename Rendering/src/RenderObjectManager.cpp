@@ -163,6 +163,29 @@ bool RenderObjectManager::render() {
   return true;
 }
 
+void RenderObjectManager::addObject(RenderObjectType type, const QString& filename) {
+
+  switch (type) {
+    case nimagna::RenderObjectManager::RenderObjectType::kTexture:
+      addTextureObject(filename);
+      break;
+    case nimagna::RenderObjectManager::RenderObjectType::kGltf:
+      addGltfObject(filename);
+      break;
+    case nimagna::RenderObjectManager::RenderObjectType::kGs:
+      addGsObject(filename);
+      break;
+    case nimagna::RenderObjectManager::RenderObjectType::kGeoGs:
+      addGeoGsObject(filename);
+      break;
+    case nimagna::RenderObjectManager::RenderObjectType::kPly:
+      addPlyObject(filename);
+      break;
+    default:
+      break;
+  }
+}
+
 const RenderObjectManager::RenderObjectList& RenderObjectManager::renderObjects() const {
   return mRenderObjectsList;
 }

@@ -38,13 +38,9 @@ class RenderWorker final : public QObject {
                       std::shared_ptr<QOffscreenSurface> surface);
   // stops the rendering and tears down the ROM
   void stopRendering();
-  // loads an image as texture render object
-  void loadImage(QString filename);
-  // loads a gltf mesh
-  void loadGLTF(QString filename);
-  // loads a v-splat/GS
-  void loadGS(QString filename);
-  void loadPLY(QString filename);
+
+  void addObject(RenderObjectManager::RenderObjectType type, const QString& filename);
+
  signals:
   // signals a rendered frame to the consumer, e.g. the openGL widget
   void renderFrameReady();
@@ -86,9 +82,7 @@ class RENDERING_API Renderer final : public QObject {
   // stop the rendering
   void stop();
 
-  void addImage(QString filename);
-  void addGS(QString filename);
-  void addPLY(QString filename);
+  void addObject(RenderObjectManager::RenderObjectType type, const QString& filename);
 
   // access to the ROM
   std::shared_ptr<RenderObjectManager> renderObjectManager() const;
@@ -104,11 +98,8 @@ class RENDERING_API Renderer final : public QObject {
   void stopRenderer();
   // signal that the the rendered frame was updated
   void renderFrameUpdated();
-
-  void loadImage(QString filename);
-  void loadGLTF(QString filename);
-  void loadGS(QString filename);
-  void loadPLY(QString filename);
+  // signal to add a render object of a specific type
+  void objectAddRequest(RenderObjectManager::RenderObjectType type, const QString& filename);
 
  private:
   // The render worker performs the rendering

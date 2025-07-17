@@ -10,7 +10,7 @@
 
 namespace nimagna {
 
-  const std::map<TextureRenderObject::SourcePixelFormat, QImage::Format>
+const std::map<TextureRenderObject::SourcePixelFormat, QImage::Format>
     TextureRenderObject::kSourcePixelFormatToQImageFormatMap = {
         {TextureRenderObject::SourcePixelFormat::RGB, QImage::Format::Format_RGB888},
         {TextureRenderObject::SourcePixelFormat::RGBA,
@@ -18,8 +18,7 @@ namespace nimagna {
         {TextureRenderObject::SourcePixelFormat::BGRA,
          QImage::Format::Format_RGBA8888_Premultiplied}};
 
-TextureRenderObject::TextureRenderObject(TextureTarget type) : mTextureTarget(type) {
-}
+TextureRenderObject::TextureRenderObject(TextureTarget type) : mTextureTarget(type) {}
 
 TextureRenderObject::TextureRenderObject(TextureTarget type, const QImage& texture)
     : TextureRenderObject(type) {
@@ -30,9 +29,10 @@ TextureRenderObject::TextureRenderObject(TextureTarget type, const QImage& textu
 }
 
 TextureRenderObject::~TextureRenderObject() {
-  mVAO.destroy();
-  mVBO.destroy();
-  mIBO.destroy();
+  // clean up OpenGL resources
+  mVertexArrayObject.destroy();
+  mVertexBufferObject.destroy();
+  mIndexBufferObject.destroy();
   mTexture.reset();
   mMaskTexture.reset();
   mShaderProgram.reset();
@@ -45,18 +45,18 @@ void TextureRenderObject::initialize() {
 
   // Set up vertex data (and buffer(s)) and configure vertex attributes
   // create a new buffer for the vertices and colors, interleaved storage
-  mVBO = QOpenGLBuffer(QOpenGLBuffer::VertexBuffer);
-  if (!mVBO.create()) {
+  mVertexBufferObject = QOpenGLBuffer(QOpenGLBuffer::VertexBuffer);
+  if (!mVertexBufferObject.create()) {
     SPDLOG_ERROR("Failed to create VertexBufferObject");
   }
-  mVBO.setUsagePattern(QOpenGLBuffer::StaticDraw);
+  mVertexBufferObject.setUsagePattern(QOpenGLBuffer::StaticDraw);
 
   // Vertex data structure is as follows:
   // there are 4 vertices (see mVBD size), each vertex has: 3 positions, 2 texture coordinates, and
   // 2 mask texture coordinates stored in a vertexData struct, resulting in [p p p t t mt mt] per
   // vertex. See also shader program setup.
   const int vertexCount = 4;
-  mVBD.resize(vertexCount);
+  mVertexBufferData.resize(vertexCount);
 
   // updates the texture coordinates and uploads the VBO
   updateTextureCoordinates();
@@ -64,12 +64,12 @@ void TextureRenderObject::initialize() {
 
   // Create and bind Vertex Array Object
   // must be bound *before* the element buffer is bound,
-  // because the VAO remembers and manages element buffers as well
-  if (!mVAO.isCreated()) {
+  // because the VAO remembers and manages element buffers 
+  if (!mVertexArrayObject.isCreated()) {
     SPDLOG_DEBUG("Creating VertexArrayObject");
-    mVAO.create();
+    mVertexArrayObject.create();
   }
-  mVAO.bind();
+  mVertexArrayObject.bind();
 
   // The index buffer
   const unsigned int indices[] = {
@@ -79,15 +79,15 @@ void TextureRenderObject::initialize() {
   };
 
   // Create a new buffer for the indexes
-  mIBO = QOpenGLBuffer(QOpenGLBuffer::IndexBuffer);  // Mind: use 'IndexBuffer' here
-  if (!mIBO.create()) {
+  mIndexBufferObject = QOpenGLBuffer(QOpenGLBuffer::IndexBuffer);  // Mind: use 'IndexBuffer' here
+  if (!mIndexBufferObject.create()) {
     SPDLOG_ERROR("Failed to create IndexBufferObject");
   }
-  mIBO.setUsagePattern(QOpenGLBuffer::StaticDraw);
-  if (!mIBO.bind()) {
+  mIndexBufferObject.setUsagePattern(QOpenGLBuffer::StaticDraw);
+  if (!mIndexBufferObject.bind()) {
     SPDLOG_ERROR("Failed to bind IndexBufferObject");
   }
-  mIBO.allocate(indices, sizeof(indices));
+  mIndexBufferObject.allocate(indices, sizeof(indices));
 
   // Finally, build and compile the shader program
   setupShaderProgram();
@@ -157,8 +157,7 @@ void TextureRenderObject::setupShaderProgram() {
   }
 
   // blurring for separate (camera) masks
-  mShaderProgram->setUniformValue(
-      "doBlurring", false);
+  mShaderProgram->setUniformValue("doBlurring", false);
 
   //////////////////////////////////////////////////////////////////////////
   // Define the format/assign the vertex data to the buffer indices
@@ -178,19 +177,19 @@ void TextureRenderObject::setupShaderProgram() {
   mShaderProgram->enableAttributeArray(0);
   const int positionOffsetBytes = 0;
   mShaderProgram->setAttributeBuffer(0, GL_FLOAT, positionOffsetBytes, positionCount,
-                                     sizeof(vertexData));
+                                     sizeof(VertexData));
 
   // layout location 1 - vec2 with texture coordinates
   mShaderProgram->enableAttributeArray(1);
   const int textureOffsetBytes = positionCount * sizeof(float);
   mShaderProgram->setAttributeBuffer(1, GL_FLOAT, textureOffsetBytes, textureCount,
-                                     sizeof(vertexData));
+                                     sizeof(VertexData));
 
   // layout location 2 - vec2 with mask texture coordinates
   mShaderProgram->enableAttributeArray(2);
   const int maskTextureOffsetBytes = textureOffsetBytes + textureCount * sizeof(float);
   mShaderProgram->setAttributeBuffer(2, GL_FLOAT, maskTextureOffsetBytes, maskTextureCount,
-                                     sizeof(vertexData));
+                                     sizeof(VertexData));
 }
 
 bool TextureRenderObject::hasSeparateMask() const {
@@ -219,27 +218,30 @@ void TextureRenderObject::draw() {
   }
   // thread critical section
   QMutexLocker locker(&mAccessMutex);
+
   // use the shader program
   if (!mShaderProgram->bind()) {
     SPDLOG_ERROR("Failed to bind texture program");
   }
 
-  // set projection matrix
+  // once the draw method is callled, the view projection matrix is set (RenderObjectManager calls
+  // prepare to set it)
+  // to create the full model-view-projection matrix, we need to multiply the view projection with the object's model matrix
   const QMatrix4x4 mvp = mViewProjectionMatrix * getModelMatrix();
+  // this is passed to the shader program's vertex shader to transform each vertex position into camera view space
   mShaderProgram->setUniformValue(mWorldTransformationShaderPosition, mvp);
 
   // set alpha transparency value [0.0, 1.0]
   mShaderProgram->setUniformValue("alphaTransparency", static_cast<GLfloat>(mAlpha));
   // need to swap R and B channel for BGRA source
   mShaderProgram->setUniformValue(
-      "swapRGB",
-      static_cast<GLboolean>(sourcePixelFormat() == SourcePixelFormat::BGRA));
+      "swapRGB", static_cast<GLboolean>(sourcePixelFormat() == SourcePixelFormat::BGRA));
 
   // use separate mask texture?
   mShaderProgram->setUniformValue("useMaskTexture", static_cast<int>(hasSeparateMask()));
 
   // bind the vertex array object (which uses the vertex buffer object)
-  mVAO.bind();
+  mVertexArrayObject.bind();
   if (!mUseExternalTexture) {
     // bind the textures only if no external texture is used
     // use color texture unit
@@ -252,10 +254,11 @@ void TextureRenderObject::draw() {
       if (mMaskTexture != nullptr) {
         // static mask texture
         mMaskTexture->bind();
-      } 
+      }
       glActiveTexture(GL_TEXTURE0 + mColorTextureUnit);
     }
   }
+
   // draw the two triangles
   glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
 
@@ -268,11 +271,11 @@ void TextureRenderObject::draw() {
       if (mMaskTexture != nullptr) {
         // static mask texture
         mMaskTexture->release();
-      } 
+      }
       glActiveTexture(GL_TEXTURE0 + mColorTextureUnit);
     }
   }
-  mVAO.release();
+  mVertexArrayObject.release();
   mShaderProgram->release();
 }
 
@@ -308,7 +311,7 @@ TextureRenderObject::SourcePixelFormat TextureRenderObject::sourcePixelFormat() 
 bool TextureRenderObject::isVisible() const {
   // find the limits of the object, for 2D is enough to decide whether it is visible or not
   const QMatrix4x4 mvp = mViewProjectionMatrix * getModelMatrix();
-  QVector3D firstVertexPosition(mVBD[0].position[0], mVBD[0].position[1], mVBD[0].position[2]);
+  QVector3D firstVertexPosition(mVertexBufferData[0].position[0], mVertexBufferData[0].position[1], mVertexBufferData[0].position[2]);
   QVector3D firstVertexScreenPosition = mvp.map(firstVertexPosition);
   float minX = firstVertexScreenPosition.x();
   float maxX = firstVertexScreenPosition.x();
@@ -317,7 +320,7 @@ bool TextureRenderObject::isVisible() const {
   float minZ = firstVertexScreenPosition.z();
   float maxZ = firstVertexScreenPosition.z();
   for (int v = 1; v < 4; ++v) {
-    QVector3D vertexPosition(mVBD[v].position[0], mVBD[v].position[1], mVBD[v].position[2]);
+    QVector3D vertexPosition(mVertexBufferData[v].position[0], mVertexBufferData[v].position[1], mVertexBufferData[v].position[2]);
     QVector3D vertexScreenPosition = mvp.map(vertexPosition);
     minX = (vertexScreenPosition.x() < minX) ? vertexScreenPosition.x() : minX;
     maxX = (vertexScreenPosition.x() > maxX) ? vertexScreenPosition.x() : maxX;
@@ -353,8 +356,7 @@ const QOpenGLTexture::PixelFormat TextureRenderObject::qGlSourceFormat() const {
   return qGlSourceFormat(mSourcePixelFormat);
 }
 
-QOpenGLTexture::PixelFormat TextureRenderObject::qGlSourceFormat(
-    SourcePixelFormat format) {
+QOpenGLTexture::PixelFormat TextureRenderObject::qGlSourceFormat(SourcePixelFormat format) {
   switch (format) {
     case SourcePixelFormat::RGB:
       return QOpenGLTexture::PixelFormat::RGB;
@@ -396,15 +398,14 @@ QImage::Format TextureRenderObject::qImageFormatFromSourcePixelFormat(SourcePixe
 
 void TextureRenderObject::uploadVertexData() {
   // upload to GPU
-  mVBO.bind();
-  mVBO.allocate(mVBD.data(), static_cast<int>(mVBD.size() * sizeof(vertexData)));
+  mVertexBufferObject.bind();
+  mVertexBufferObject.allocate(mVertexBufferData.data(), static_cast<int>(mVertexBufferData.size() * sizeof(VertexData)));
 }
 
-void TextureRenderObject::changeTextureSizeAndFormat(QSize size,
-                                                     SourcePixelFormat srcPixelFormat) {
+void TextureRenderObject::changeTextureSizeAndFormat(QSize size, SourcePixelFormat srcPixelFormat) {
   // thread critical section
   QMutexLocker locker(&mAccessMutex);
-  if (mTextureSourceSize == size && srcPixelFormat == mSourcePixelFormat ) {
+  if (mTextureSourceSize == size && srcPixelFormat == mSourcePixelFormat) {
     // all the same
     return;
   }
@@ -549,8 +550,7 @@ void TextureRenderObject::setTextureData(const QImage& image) {
       mTexture->bind();
       if (imageFormat != qImageFormatFromSourcePixelFormat(srcPixelFormat)) {
         // needs conversion
-        QImage texture =
-            image.convertToFormat(qImageFormatFromSourcePixelFormat(srcPixelFormat));
+        QImage texture = image.convertToFormat(qImageFormatFromSourcePixelFormat(srcPixelFormat));
         mTexture->setData(0, 0, 0, mTextureSourceSize.width(), mTextureSourceSize.height(), 0, 0,
                           qGlSourceFormat(), QOpenGLTexture::UInt8,
                           static_cast<const void*>(texture.bits()));
@@ -589,8 +589,8 @@ void TextureRenderObject::setMaskTextureData(const QImage& image) {
 }
 
 void TextureRenderObject::setVertexPosition(int vertexId, int index, float value) {
-  if (vertexId >= mVBD.size() || index >= 3) return;
-  mVBD[vertexId].position[index] = value;
+  if (vertexId >= mVertexBufferData.size() || index >= 3) return;
+  mVertexBufferData[vertexId].position[index] = value;
 }
 
 void TextureRenderObject::updateTextureCoordinates() {
@@ -667,10 +667,10 @@ void TextureRenderObject::updateTextureCoordinates() {
   // update VBD
   for (int v = 0.f; v < 4; ++v) {
     for (int p = 0.f; p < 3; ++p) {
-      mVBD[v].position[p] = vertices[v * 3 + p];
+      mVertexBufferData[v].position[p] = vertices[v * 3 + p];
     }
-    mVBD[v].texture[0] = textureCoords[2 * v];
-    mVBD[v].texture[1] = textureCoords[2 * v + 1];
+    mVertexBufferData[v].texture[0] = textureCoords[2 * v];
+    mVertexBufferData[v].texture[1] = textureCoords[2 * v + 1];
   }
   uploadVertexData();
 }
@@ -726,8 +726,8 @@ void TextureRenderObject::updateMaskTextureCoordinates() {
   }
   // update VBD
   for (int v = 0; v < 4; ++v) {
-    mVBD[v].maskTexture[0] = maskTextureCoords[2 * v];
-    mVBD[v].maskTexture[1] = maskTextureCoords[2 * v + 1];
+    mVertexBufferData[v].maskTexture[0] = maskTextureCoords[2 * v];
+    mVertexBufferData[v].maskTexture[1] = maskTextureCoords[2 * v + 1];
   }
   uploadVertexData();
 }
@@ -749,7 +749,6 @@ int TextureRenderObject::nextMultipleOfFour(int input) {
   // from https://stackoverflow.com/questions/2022179/c-quick-calculation-of-next-multiple-of-4
   return (input + 3) & ~0x03;
 }
-
 
 std::array<float, 6> TextureRenderObject::textureVertexPositions(const QSize& textureSize) {
   // Note: This code used to be in TextureRenderObject but has moved here since it is also used in

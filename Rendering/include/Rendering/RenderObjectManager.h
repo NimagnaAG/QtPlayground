@@ -45,6 +45,10 @@ class RENDERING_API RenderObjectManager final : public QObject {
   friend class RenderWorker;
 
  public:
+  // the supported render object types. Use with RenderObjectManager::addObject to add a render
+  // object.
+  enum class RenderObjectType { kTexture, kGltf, kGs, kGeoGs, kPly };
+
   // not copyable but movable
   RenderObjectManager();
   RenderObjectManager(const RenderObjectManager& other) = delete;
@@ -68,12 +72,8 @@ class RENDERING_API RenderObjectManager final : public QObject {
     return mRenderFramebufferTarget;
   }
 
-  // methods to add render objects
-  void addTextureObject(const QString& filename);
-  void addGltfObject(const QString& filename);
-  void addGsObject(const QString& filename);
-  void addGeoGsObject(const QString& filename);
-  void addPlyObject(const QString& filename);
+  // method to add a render object of a specific type. See also specific methods below
+  void addObject(RenderObjectType type, const QString& filename);
 
   // the render objects
   const RenderObjectList& renderObjects() const;
@@ -83,7 +83,18 @@ class RENDERING_API RenderObjectManager final : public QObject {
   RenderObjectList mGsRenderObjectsList;
   bool isGSobjectAttached = false;
 
+ protected slots:
+  void onOutputSettingsChanged();
+  void onOpenGlDebugMessage(const QOpenGLDebugMessage& debugMessage);
+
  private:
+  // methods to add render objects
+  void addTextureObject(const QString& filename);
+  void addGltfObject(const QString& filename);
+  void addGsObject(const QString& filename);
+  void addGeoGsObject(const QString& filename);
+  void addPlyObject(const QString& filename);
+
   // pass the context to the render object manager and initialize
   void initialize(std::shared_ptr<QOpenGLContext> context,
                   std::shared_ptr<QOffscreenSurface> surface);
@@ -91,11 +102,6 @@ class RENDERING_API RenderObjectManager final : public QObject {
   bool render();
   void cleanUp();
 
- protected slots:
-  void onOutputSettingsChanged();
-  void onOpenGlDebugMessage(const QOpenGLDebugMessage& debugMessage);
-
- private:
   // make OpenGL context the current context
   bool tryMakeOpenGlContextCurrent(bool isCritical);
 

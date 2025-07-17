@@ -43,7 +43,7 @@ class RENDERING_API TextureRenderObject : public RenderObject, protected QOpenGL
 
   // draws the render object.
   virtual void draw() override;
-  virtual void resizeGL(int w, int h) override{};
+  virtual void resizeGL(int w, int h) override {};
   virtual void keyPressEvent(QKeyEvent* event) override {};
   // get the source's texture and mask size
   bool isEmpty() const;
@@ -106,7 +106,6 @@ class RENDERING_API TextureRenderObject : public RenderObject, protected QOpenGL
   // the shaders
   std::unique_ptr<QOpenGLShaderProgram> mShaderProgram;
 
-
  private:
   // initialize the shader program
   void setupShaderProgram();
@@ -124,25 +123,27 @@ class RENDERING_API TextureRenderObject : public RenderObject, protected QOpenGL
   const QOpenGLTexture::PixelFormat qGlSourceFormat() const;
   const GLint glSourceFormat() const;
   static QImage::Format qImageFormatFromSourcePixelFormat(SourcePixelFormat format);
-  static const std::map<SourcePixelFormat, QImage::Format>
-      kSourcePixelFormatToQImageFormatMap;
+  static const std::map<SourcePixelFormat, QImage::Format> kSourcePixelFormatToQImageFormatMap;
 
   // The texture's type (2D or Rect)
   const TextureTarget mTextureTarget;
-  // the Vertex Array Object holds all vertex relevant data
-  QOpenGLVertexArrayObject mVAO;
-  // the vertex buffer object
-  QOpenGLBuffer mVBO;
+
+  // the Vertex Array Object encapsulates the state needed to specify per-vertex attribute data to
+  // the OpenGL pipeline. Must be bound before initializatin of the VBO and IBO and released
+  // afterwards. During rendering, it must be bound before drawing, and released afterwards.
+  QOpenGLVertexArrayObject mVertexArrayObject;
+  // the vertex buffer object references the vertex buffer data in mVertexBufferData
+  QOpenGLBuffer mVertexBufferObject;
   // the index buffer with the vertex indices for each triangle
-  QOpenGLBuffer mIBO;
+  QOpenGLBuffer mIndexBufferObject;
   // struct holding the data per vertex
-  struct vertexData {
+  struct VertexData {
     float position[3];
     float texture[2];
     float maskTexture[2];
   };
   // the vertex buffer data that is uploaded to the vertex buffer object
-  std::vector<vertexData> mVBD;
+  std::vector<VertexData> mVertexBufferData;
 
   // the source format can be RGB, RGBA, or BGRA
   SourcePixelFormat mSourcePixelFormat = SourcePixelFormat::RGB;
@@ -173,7 +174,7 @@ class RENDERING_API TextureRenderObject : public RenderObject, protected QOpenGL
   // flag to enable or disable the blurring in the keyed_texture shader
   bool mCameraMaskBlurring = false;
   // alpha value for transparency
-  float mAlpha = 1.0f;  
+  float mAlpha = 1.0f;
 
   // texture units for color and mask texture
   static inline const GLint mColorTextureUnit = 2;
@@ -190,7 +191,7 @@ class RENDERING_API TextureRenderObject : public RenderObject, protected QOpenGL
   // get next multiple of four number
   static int nextMultipleOfFour(int input);
 
-    // calculates the vertex positions of a textured rectangle
+  // calculates the vertex positions of a textured rectangle
   // returns left, top, right, bottom, width, height (the latter two for convenience)
   // normally, this is [-1,-1,1,1,2,2] but if the texture width/height are not 16/9, the vertices
   // must be adapted

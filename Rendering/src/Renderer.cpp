@@ -48,30 +48,9 @@ void RenderWorker::stopRendering() {
   mRenderObjectManager.reset();
 }
 
-void RenderWorker::loadImage(QString filename) {
+void RenderWorker::addObject(RenderObjectManager::RenderObjectType type, const QString& filename) {
   if (!mRenderObjectManager) return;
-  mRenderObjectManager->addTextureObject(filename);
-}
-
-void RenderWorker::loadGLTF(QString filename) {
-  SPDLOG_INFO("Load GLTF called");
-  if (!mRenderObjectManager) return;
-
-  mRenderObjectManager->addGltfObject(filename);
-  SPDLOG_INFO("A GLTF Should be displayed now..: " + filename);
-  // add gltf viewer / loader here
-}
-// loads a GS / video
-void RenderWorker::loadGS(QString filename) {
-  if (!mRenderObjectManager) return;
-  mRenderObjectManager->addGsObject(filename);
-  SPDLOG_INFO("A Gaussian Splat Should be displayed now..: " + filename);
-}
-// loads a GS / video
-void RenderWorker::loadPLY(QString filename) {
-  if (!mRenderObjectManager) return;
-  mRenderObjectManager->addPlyObject(filename);
-  SPDLOG_INFO("A Gaussian Splat PLY Should be displayed now..: " + filename);
+  mRenderObjectManager->addObject(type, filename);
 }
 
 void RenderWorker::render() {
@@ -110,10 +89,7 @@ Renderer::Renderer() {
           &RenderWorker::initializeRendering);
   connect(this, &Renderer::startRenderer, mRenderWorker.get(), &RenderWorker::startRendering);
   connect(this, &Renderer::stopRenderer, mRenderWorker.get(), &RenderWorker::stopRendering);
-  connect(this, &Renderer::loadImage, mRenderWorker.get(), &RenderWorker::loadImage);
-  connect(this, &Renderer::loadGLTF, mRenderWorker.get(), &RenderWorker::loadGLTF);
-  connect(this, &Renderer::loadGS, mRenderWorker.get(), &RenderWorker::loadGS);
-  connect(this, &Renderer::loadPLY, mRenderWorker.get(), &RenderWorker::loadPLY);
+  connect(this, &Renderer::objectAddRequest, mRenderWorker.get(), &RenderWorker::addObject);
   connect(mRenderWorker.get(), &RenderWorker::renderFrameReady, this,
           &Renderer::renderFrameUpdated);
 
@@ -220,14 +196,8 @@ void Renderer::stop() {
   mRenderWorker.reset();
 }
 
-void Renderer::addImage(QString filename) {
-  emit loadImage(filename);
+void Renderer::addObject(RenderObjectManager::RenderObjectType type, const QString& filename) {
+  emit objectAddRequest(type, filename);
 }
 
-void Renderer::addGS(QString filename) {
-  emit loadGS(filename);
-}
-void Renderer::addPLY(QString filename) {
-  emit loadPLY(filename);
-}
 }  // namespace nimagna
