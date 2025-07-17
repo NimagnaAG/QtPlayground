@@ -64,7 +64,7 @@ void TextureRenderObject::initialize() {
 
   // Create and bind Vertex Array Object
   // must be bound *before* the element buffer is bound,
-  // because the VAO remembers and manages element buffers 
+  // because the VAO remembers and manages element buffers
   if (!mVertexArrayObject.isCreated()) {
     SPDLOG_DEBUG("Creating VertexArrayObject");
     mVertexArrayObject.create();
@@ -129,6 +129,7 @@ void TextureRenderObject::setupShaderProgram() {
   if (mWorldTransformationShaderPosition == -1) {
     SPDLOG_ERROR("Invalid world transformation ID: {}", mShaderProgram->log().toStdString());
   }
+  // initialize the world transformation matrix to identity
   QMatrix4x4 projectionMatrix;
   projectionMatrix.setToIdentity();
   mShaderProgram->setUniformValue(mWorldTransformationShaderPosition, projectionMatrix);
@@ -208,7 +209,7 @@ void TextureRenderObject::enableSeparateMask(bool separateMaskEnabled, bool blur
   }
 }
 
-void TextureRenderObject::draw() {
+void TextureRenderObject::draw(const QMatrix4x4& viewMatrix, const QMatrix4x4& projectionMatrix) {
   if (isEmpty()) {
     return;
   }
@@ -224,11 +225,16 @@ void TextureRenderObject::draw() {
     SPDLOG_ERROR("Failed to bind texture program");
   }
 
+  // set up the expected OpenGL state
+  glDisable(GL_CULL_FACE);
+
   // once the draw method is callled, the view projection matrix is set (RenderObjectManager calls
   // prepare to set it)
-  // to create the full model-view-projection matrix, we need to multiply the view projection with the object's model matrix
-  const QMatrix4x4 mvp = mViewProjectionMatrix * getModelMatrix();
-  // this is passed to the shader program's vertex shader to transform each vertex position into camera view space
+  // to create the full model-view-projection matrix, we need to multiply the view projection with
+  // the object's model matrix
+  const QMatrix4x4 mvp = projectionMatrix * viewMatrix * getModelMatrix();
+  // this is passed to the shader program's vertex shader to transform each vertex position into
+  // camera view space
   mShaderProgram->setUniformValue(mWorldTransformationShaderPosition, mvp);
 
   // set alpha transparency value [0.0, 1.0]
@@ -308,32 +314,6 @@ TextureRenderObject::SourcePixelFormat TextureRenderObject::sourcePixelFormat() 
   return mSourcePixelFormat;
 }
 
-bool TextureRenderObject::isVisible() const {
-  // find the limits of the object, for 2D is enough to decide whether it is visible or not
-  const QMatrix4x4 mvp = mViewProjectionMatrix * getModelMatrix();
-  QVector3D firstVertexPosition(mVertexBufferData[0].position[0], mVertexBufferData[0].position[1], mVertexBufferData[0].position[2]);
-  QVector3D firstVertexScreenPosition = mvp.map(firstVertexPosition);
-  float minX = firstVertexScreenPosition.x();
-  float maxX = firstVertexScreenPosition.x();
-  float minY = firstVertexScreenPosition.y();
-  float maxY = firstVertexScreenPosition.y();
-  float minZ = firstVertexScreenPosition.z();
-  float maxZ = firstVertexScreenPosition.z();
-  for (int v = 1; v < 4; ++v) {
-    QVector3D vertexPosition(mVertexBufferData[v].position[0], mVertexBufferData[v].position[1], mVertexBufferData[v].position[2]);
-    QVector3D vertexScreenPosition = mvp.map(vertexPosition);
-    minX = (vertexScreenPosition.x() < minX) ? vertexScreenPosition.x() : minX;
-    maxX = (vertexScreenPosition.x() > maxX) ? vertexScreenPosition.x() : maxX;
-    minY = (vertexScreenPosition.y() < minY) ? vertexScreenPosition.y() : minY;
-    maxY = (vertexScreenPosition.y() > maxY) ? vertexScreenPosition.y() : maxY;
-    minZ = (vertexScreenPosition.z() < minZ) ? vertexScreenPosition.z() : minZ;
-    maxZ = (vertexScreenPosition.z() > maxZ) ? vertexScreenPosition.z() : maxZ;
-  }
-  // check if any of the limits found are within a cube of [-1,-1,-1] to [1,1,1]
-  // works for both the 2D orthographic projection and the 3D perspective projections
-  return maxX > -1.0f && minX < 1.0f && maxY > -1.0f && minY < 1.0f && maxZ > -1.0f && minZ < 1.0f;
-}
-
 const QOpenGLTexture::Target TextureRenderObject::qGlTarget() const {
   return qGlTarget(mTextureTarget);
 }
@@ -399,7 +379,8 @@ QImage::Format TextureRenderObject::qImageFormatFromSourcePixelFormat(SourcePixe
 void TextureRenderObject::uploadVertexData() {
   // upload to GPU
   mVertexBufferObject.bind();
-  mVertexBufferObject.allocate(mVertexBufferData.data(), static_cast<int>(mVertexBufferData.size() * sizeof(VertexData)));
+  mVertexBufferObject.allocate(mVertexBufferData.data(),
+                               static_cast<int>(mVertexBufferData.size() * sizeof(VertexData)));
 }
 
 void TextureRenderObject::changeTextureSizeAndFormat(QSize size, SourcePixelFormat srcPixelFormat) {

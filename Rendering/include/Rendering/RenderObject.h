@@ -20,10 +20,9 @@ namespace nimagna {
   overwriting the initialize method, the base class' initialize method must be called to ensure full
   initialization.
 
-  During rendering, the ROM prepares the render object with the current camera view/projection
-  matrix. This allows a render object to apply its own model matrix to the camera view to get the
-  full projection matrix and render itself into the framebuffer object.
-
+  During rendering, the ROM passes the render object the current camera view and projection
+  matrices. This allows a render object to apply its own model matrix (if defined) on top to get the
+  full model-view-projection matrix and render itself into the framebuffer object.
  */
 class RENDERING_API RenderObject : public QObject {
   Q_OBJECT
@@ -49,16 +48,10 @@ class RENDERING_API RenderObject : public QObject {
   // Draws the ob into the framebuffer object. This must ensure that the object sets up the OpenGL
   // state such that it can render itself. The object cannot assume that the OpenGL state is
   // preserved between two draw calls.
-  virtual void draw() = 0;
-
-  // TODO: remove
-  virtual void keyPressEvent(QKeyEvent* event) = 0;
-  virtual void resizeGL(int w, int h) = 0;
-
-  // get the model matrix
-  const QMatrix4x4& getModelMatrix() const;
-  // prepare for rendering
-  void prepare(const QMatrix4x4& vp);
+  virtual void draw(const QMatrix4x4& viewMatrix, const QMatrix4x4& projectionMatrix) = 0;
+  // get and set the model matrix
+  const QMatrix4x4& getModelMatrix() const { return mModelMatrix; }
+  void setModelMatrix(const QMatrix4x4& modelMatrix);
 
   // check if initialized
   bool isInitialized() const;
@@ -70,17 +63,13 @@ class RENDERING_API RenderObject : public QObject {
   void propertiesChanged();
 
  protected:
-  // the current camera view projection matrix. it is set by the RenderObjectManager using the
-  // prepare methods just before draw is called for rendering.
-  QMatrix4x4 mViewProjectionMatrix;
-  // the object's own model matrix defines the position, rotation, and scale of the object in the world coordinate system.
-  QMatrix4x4 mModelMatrix;
-
- protected:
   // flag indicating if that render object is ready for rendering
   bool mIsReadyForRendering = true;
 
  private:
+  // the object's own model matrix defines the position, rotation, and scale of the object in the
+  // world coordinate system.
+  QMatrix4x4 mModelMatrix;
   // flag indicating if that render object is initialized
   bool mIsInitialized;
   // the layer is a volatile member used to sort render objects in the rendering pipeline.

@@ -60,37 +60,16 @@ class RENDERING_API GeoGsRenderObject : public RenderObject, protected QOpenGLFu
   // initializes the render object.
   virtual void initialize() override;
 
-  void LoadSplatGs(const QString& location);
-  void LoadAnimateGs(const QString& location) {}; 
  
   // draws the render object.
-  virtual void draw() override; 
-  void sort(const QMatrix4x4& viewProj);
-  void resizeGL(int w, int h);
-  bool isControl = false;
-  virtual void keyPressEvent(QKeyEvent* event) override {
-    SPDLOG_INFO("keyPressEvent");
-      /* invertMatrix(viewMatrix); 
-      if (event->key() == Qt::Key_Up ) {
-        translateMatrix(viewMatrix, 0, 0, 0.25);
-      } else if (event->key() == Qt::Key_Down  ) {
-        translateMatrix(viewMatrix, 0, 0, -0.25);
-      } else if (event->key() == Qt::Key_Left) {
-        translateMatrix(viewMatrix, -0.25, 0, 0);
-      } else if (event->key() == Qt::Key_Right) {
-        translateMatrix(viewMatrix, 0.25, 0, 0);
-      } else if (event->key() == Qt::Key_R) {
-        isControl = false;
-      } else if (event->key() == Qt::Key_W) {
-        rotateMatrix(viewMatrix,0.1f, 0, 0, 0.25f);
-      } else if (event->key() == Qt::Key_S) {
-        rotateMatrix(viewMatrix,0.1f, 0, 0, -0.25f);
-      }
+  virtual void draw(const QMatrix4x4& viewMatrix, const QMatrix4x4& projectionMatrix) override; 
 
-      isControl = true;
-      invertMatrix(viewMatrix);
-      */ 
-  }; 
+  private:
+  void LoadSplatGs(const QString& location);
+  void LoadAnimateGs(const QString& location) {}; 
+
+  void sort(const QMatrix4x4& viewProj);
+  bool isControl = false;
   
 struct Vertex {
     QVector3D center;
@@ -108,10 +87,9 @@ struct Vertex {
   std::vector<QVector3D> m_scales;
   std::vector<QVector4D> m_rotations;
   std::vector<QVector4D> m_colors;
-  QMatrix4x4 viewMatrix;  
   QOpenGLBuffer m_ebo; 
   bool isDataReady = false;
-  int m_uViewLoc, m_uProjLoc, m_uFocalLoc, m_uViewportLoc;
+  int m_uViewLoc, m_uProjLoc, m_uFocalLoc;
   int viewportw = 1000, viewporth = 1000;
 
   struct SplatData {
@@ -120,95 +98,7 @@ struct Vertex {
     std::vector<QVector4D> rotations;
     std::vector<QVector4D> colors;
   };
-  SplatData loadSplatFile(const QString& filePath) {
-    SplatData result;
-
-    QFile file(filePath);
-    if (!file.open(QIODevice::ReadOnly)) {
-      // Handle error as appropriate
-      return result;
-    } 
-    QByteArray data = file.readAll(); 
-    vertexCount = data.size() / rowLength;
-    const uint8_t* raw = reinterpret_cast<const uint8_t*>(data.constData());
-
-    for (int i = 0; i < vertexCount; ++i) {
-      int offset = i * rowLength;
-
-      // Position (3 floats)
-      float px, py, pz;
-      std::memcpy(&px, raw + offset, 4);
-      std::memcpy(&py, raw + offset + 4, 4);
-      std::memcpy(&pz, raw + offset + 8, 4);
-      result.positions.emplace_back(px, py, pz);
-
-      // Scale (3 floats)
-      float sx, sy, sz;
-      std::memcpy(&sx, raw + offset + 12, 4);
-      std::memcpy(&sy, raw + offset + 16, 4);
-      std::memcpy(&sz, raw + offset + 20, 4);
-      result.scales.emplace_back(sx, sy, sz);
-
-      // Color (4 bytes, normalized to [0,1])
-      float r = raw[offset + 24] / 255.0f;
-      float g = raw[offset + 25] / 255.0f;
-      float b = raw[offset + 26] / 255.0f;
-      float a = raw[offset + 27] / 255.0f;
-      result.colors.emplace_back(r, g, b, a);
-
-      // Quaternion (4 bytes, mapped to [-1,1])
-      float qx = (raw[offset + 28] - 128) / 128.0f;
-      float qy = (raw[offset + 29] - 128) / 128.0f;
-      float qz = (raw[offset + 30] - 128) / 128.0f;
-      float qw = (raw[offset + 31] - 128) / 128.0f;
-      result.rotations.emplace_back(qx, qy, qz, qw);
-    }
-    /* std::ofstream outFile("texdata_output.txt");
-    if (outFile.is_open()) {
-      // Print positions
-      outFile << "Positions:\n";
-      for (size_t i = 0; i < result.positions.size(); ++i) {
-        const auto& pos = result.positions[i];
-        outFile << pos.x() << " " << pos.y() << " " << pos.z();
-        if (i + 1 < result.positions.size()) outFile << " | ";
-      }
-      outFile << "\n";
-
-      // Print scales
-      outFile << "Scales:\n";
-      for (size_t i = 0; i < result.scales.size(); ++i) {
-        const auto& scale = result.scales[i];
-        outFile << scale.x() << " " << scale.y() << " " << scale.z();
-        if (i + 1 < result.scales.size()) outFile << " | ";
-      }
-      outFile << "\n";
-
-      // Print colors
-      outFile << "Colors:\n";
-      for (size_t i = 0; i < result.colors.size(); ++i) {
-        const auto& color = result.colors[i];
-        outFile << color.x() << " " << color.y() << " " << color.z() << " " << color.w();
-        if (i + 1 < result.colors.size()) outFile << " | ";
-      }
-      outFile << "\n";
-
-      // Print rotations
-      outFile << "Rotations:\n";
-      for (size_t i = 0; i < result.rotations.size(); ++i) {
-        const auto& rot = result.rotations[i];
-        outFile << rot.x() << " " << rot.y() << " " << rot.z() << " " << rot.w();
-        if (i + 1 < result.rotations.size()) outFile << " | ";
-      }
-      outFile << "\n";
-
-      outFile.close();
-      SPDLOG_INFO("texdata saved to texdata_output.txt");
-    } else {
-      SPDLOG_INFO("Failed to open file for writing texdata.");
-    }
- */
-    return result;
-  }
+  SplatData loadSplatFile(const QString& filePath);
   int focalWidth = 1500;
   int focalHeight = 1500;
 

@@ -13,33 +13,23 @@
 #include <QtGlobal>
 #include <QtGui/QOpenGLFunctions>
 #include <QtOpenGL/QOpenGLPixelTransferOptions>
+#include <array>
+#include <cmath>
+#include <mdspan>
 #include <memory>
 #include <type_traits>
-#include <array>
 #include <vector>
-#include <mdspan>
-
-#include <cmath>
 
 namespace nimagna {
 
-GsRenderObject::GsRenderObject(const QString& location) 
-  : m_texture(QOpenGLTexture::Target2D),  // Initialize m_texture with a valid constructor
-    viewMatrix(nullptr, std::extents<std::size_t, 4, 4>()) {  // Initialize viewMatrix with nullptr first
-  // Properly initialize std::mdspan
-  static float initialMatrix[16] = {1.f, 0.f,  0.f, 0.f, 
-                                    0.f, 1.f, 0.f, 0.f,
-                                    0.f, 0.f, 1.f, 0.0f, 
-                                    0.7f,  0.0f, 0.55f, 1.0f};
-
-  viewMatrix = std::mdspan<float, std::extents<std::size_t, 4, 4>>(initialMatrix);
-  mGsLocation = location;  
-  initialize(); 
+GsRenderObject::GsRenderObject(const QString& location)
+    : m_texture(QOpenGLTexture::Target2D), mGsLocation(location) {
+  initialize();
 }
 
 void GsRenderObject::initialize() {
   initializeOpenGLFunctions();
-   
+
   // Done
   RenderObject::initialize();
   QString fileExtension = mGsLocation.split(".").last();
@@ -55,34 +45,41 @@ void GsRenderObject::initialize() {
     LoadSplatGs(mGsLocation);
     SPDLOG_ERROR("file extension wrong:{} ", fileExtension.toStdString());
   }
+}
 
+std::vector<unsigned char> GsRenderObject::readFromFile(const std::filesystem::path& path) {
+  // file buffer
+  std::vector<unsigned char> u_buffer(std::filesystem::file_size(path));
+  // read file data to buffer
+  std::basic_ifstream<unsigned char> inputFile(path, std::ios_base::binary);
+  inputFile.read(u_buffer.data(), u_buffer.size());
+  inputFile.close();
+  return u_buffer;
 }
 
 void GsRenderObject::LoadSplatGs(const QString& location) {
   SPDLOG_INFO("in LoadSplatGs");
   // Clear previous data
-    std::vector<unsigned char> data = readFromFile(location.toStdString());
+  std::vector<unsigned char> data = readFromFile(location.toStdString());
 
-    // resize data folowing the vertexCount
-    vertexCount = static_cast<int>(data.size() / rowLength);
+  // resize data folowing the vertexCount
+  vertexCount = static_cast<int>(data.size() / rowLength);
 
-    depthIndex.resize(vertexCount + 1);
+  depthIndex.resize(vertexCount + 1);
 
-    texheight = std::ceil((float)(2 * vertexCount) / (float)texwidth);  // Set to your desired height
-    m_data = std::make_unique<SplatData>(data);  
-    initializeGL(); 
+  texheight = std::ceil((float)(2 * vertexCount) / (float)texwidth);  // Set to your desired height
+  m_data = std::make_unique<SplatData>(data);
+  initializeGL();
 
-    setView(viewMatrix[std::array{0, 2}], viewMatrix[std::array{1, 2}],
-            viewMatrix[std::array{2, 2}]);
-    isDataReady = true;
+  isDataReady = true;
 
-    RenderObject::initialize();
-} 
+  RenderObject::initialize();
+}
 
 void GsRenderObject::LoadAnimateGs(const QString& location) {}
 
 //
-//void GsRenderObject::viewChanged() { 
+// void GsRenderObject::viewChanged() {
 //    QOpenGLExtraFunctions* f = QOpenGLContext::currentContext()->extraFunctions();
 //
 //  // fps calculations (from paintGL)
@@ -90,11 +87,14 @@ void GsRenderObject::LoadAnimateGs(const QString& location) {}
 //  f->glClear(GL_COLOR_BUFFER_BIT);
 //  QOpenGLContext::currentContext()->extraFunctions()->glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4,
 //                                                                            vertexCount);
-//} 
-void GsRenderObject::sortByDepth(float x, float y, float z) {
+//}
+void GsRenderObject::sortByDepth(QVector3D cameraPosition) {
   int maxDepth = std::numeric_limits<int>::min();
   int minDepth = std::numeric_limits<int>::max();
   std::vector<unsigned int> sizeList(vertexCount);
+  const auto x = cameraPosition.x();
+  const auto y = cameraPosition.y();
+  const auto z = cameraPosition.z();
   for (int i = 0; i < vertexCount; i++) {
     int depth = (x * m_data->m_floatBuffer[8 * i + 0] + y * m_data->m_floatBuffer[8 * i + 1] +
                  z * m_data->m_floatBuffer[8 * i + 2]) *
@@ -103,39 +103,41 @@ void GsRenderObject::sortByDepth(float x, float y, float z) {
 
     if (depth > maxDepth) maxDepth = depth;
     if (depth < minDepth) minDepth = depth;
-  } 
+  }
   constexpr int sizeSort = 256 * 256;
   // This is a 16 bit single-pass counting sort
   float depthInv = (sizeSort) / (maxDepth - minDepth);
-  std::vector<int> counts0(sizeSort); 
-  // normalize depth 
-  std::vector<unsigned int> normalizedDepths = sizeList | std::views::transform([&](unsigned int& val) {
-    val = std::floor((val - minDepth) * depthInv);
-    counts0[val]++;  // count occurrences
-    return val;
-  }) | std::ranges::to<std::vector>(); 
+  std::vector<int> counts0(sizeSort);
+  // normalize depth
+  std::vector<unsigned int> normalizedDepths = sizeList |
+                                               std::views::transform([&](unsigned int& val) {
+                                                 val = std::floor((val - minDepth) * depthInv);
+                                                 counts0[val]++;  // count occurrences
+                                                 return val;
+                                               }) |
+                                               std::ranges::to<std::vector>();
   std::vector<int> starts0(sizeSort);
   for (int i = 1; i < sizeSort; i++) starts0[i] = starts0[i - 1] + counts0[i - 1];
 
   for (int i = 0; i < vertexCount; i++) {
     depthIndex[starts0[sizeList[i]]++] = i;
-  } 
+  }
   setDepthIndex(depthIndex);
-} 
-
-void GsRenderObject::resizeGL(int w, int h) {
-  QOpenGLExtraFunctions* f = QOpenGLContext::currentContext()->extraFunctions();
-  GLfloat tabFloat[] = {static_cast<GLfloat>(focalWidth), static_cast<GLfloat>(focalHeight)};
-  f->glUniform2fv(m_focalLoc, 1, tabFloat);
-  m_projectionMatrix = getProjectionMatrix(focalWidth, focalHeight, w, h);
-  //GLfloat innerTab[] = {static_cast<GLfloat>(w), static_cast<GLfloat>(h)};
-  //f->glUniform2fv(m_viewPortLoc, 1, mViewProjectionMatrix.data());
-  f->glViewport(0, 0, w, h);
-  f->glUniformMatrix4fv(m_projMatrixLoc, 1, false, m_projectionMatrix.data());
-  SPDLOG_INFO("GsRenderObject resizeGL done ");
 }
 
- void GsRenderObject::initializeGL() {
+// void GsRenderObject::resizeGL(int w, int h) {
+//   QOpenGLExtraFunctions* f = QOpenGLContext::currentContext()->extraFunctions();
+//   GLfloat tabFloat[] = {static_cast<GLfloat>(focalWidth), static_cast<GLfloat>(focalHeight)};
+//   f->glUniform2fv(m_focalLoc, 1, tabFloat);
+//   m_projectionMatrix = getProjectionMatrix(focalWidth, focalHeight, w, h);
+//   //GLfloat innerTab[] = {static_cast<GLfloat>(w), static_cast<GLfloat>(h)};
+//   //f->glUniform2fv(m_viewPortLoc, 1, mViewProjectionMatrix.data());
+//   f->glViewport(0, 0, w, h);
+//   f->glUniformMatrix4fv(m_projMatrixLoc, 1, false, m_projectionMatrix.data());
+//   SPDLOG_INFO("GsRenderObject resizeGL done ");
+// }
+
+void GsRenderObject::initializeGL() {
   // QOpenGLDebugLogger* logger = new QOpenGLDebugLogger(this);
   // connect(logger, &QOpenGLDebugLogger::messageLogged, [&](const QOpenGLDebugMessage&
   // debugMessage) { qCritical() << debugMessage; }); logger->initialize(); // initializes in
@@ -179,16 +181,54 @@ void GsRenderObject::resizeGL(int w, int h) {
   f->glVertexAttribDivisor(a_index, 1);
 }
 
- void GsRenderObject::draw() {
-   if (isDataReady) {
-    
-     // worldInteraction(viewMatrix);
-     setView(viewMatrix[std::array{0, 2}], viewMatrix[std::array{1, 2}],
-             viewMatrix[std::array{2, 2}]);
-   }
- }
+void GsRenderObject::draw(const QMatrix4x4& viewMatrix, const QMatrix4x4& projectionMatrix) {
+  if (!isDataReady) {
+    return;
+  }
 
- void GsRenderObject::setTextureData(const std::vector<unsigned int>& texdata, int texwidth,
+  // determine the current position in the view and its change compared to the last update
+  const auto inverseViewMatrix = viewMatrix.inverted();
+  auto cameraPositionRaw = inverseViewMatrix.column(3);
+  cameraPositionRaw /= cameraPositionRaw.w();
+  const auto cameraPosition = cameraPositionRaw.toVector3D();
+  const auto dotProduct = QVector3D::dotProduct(mLastCameraPosition, cameraPosition);
+  if (std::abs(dotProduct - 1) > 0.01) {
+    // position changed -> update
+    std::optional<std::vector<unsigned int>> texdata = generateTexture();
+
+    if (texdata.has_value()) {
+      setTextureData(texdata.value(), texwidth, texheight);
+    }
+    sortByDepth(cameraPosition);
+    mLastCameraPosition = cameraPosition;
+  }
+
+  // update program
+  m_program.bind();
+  checkOpenGLError("m_program.bind");
+
+  QOpenGLExtraFunctions* f = QOpenGLContext::currentContext()->extraFunctions();
+  f->glUniformMatrix4fv(m_viewLoc, 1, false, viewMatrix.constData());
+  checkOpenGLError("glUniformMatrix4fv");
+  f->glDisable(GL_DEPTH_TEST);
+  checkOpenGLError("glDisable(GL_DEPTH_TEST)");
+  f->glEnable(GL_BLEND);
+  checkOpenGLError("glEnable(GL_BLEND)");
+  f->glBlendFuncSeparate(GL_ONE_MINUS_DST_ALPHA, GL_ONE, GL_ONE_MINUS_DST_ALPHA, GL_ONE);
+  checkOpenGLError("glBlendFuncSeparate");
+  f->glClear(GL_COLOR_BUFFER_BIT);
+  checkOpenGLError("glClear");
+
+  // bind VAO and draw  
+  m_vao.bind();
+  checkOpenGLError("m_vao.bind");
+  f->glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, vertexCount);
+  checkOpenGLError("glDrawArraysInstanced");
+  // m_program.release();
+  checkOpenGLError("m_program.release");
+}
+
+void GsRenderObject::setTextureData(const std::vector<unsigned int>& texdata, int texwidth,
                                     int texheight) {
   QOpenGLExtraFunctions* f = QOpenGLContext::currentContext()->extraFunctions();
   f->glBindTexture(GL_TEXTURE_2D, m_texture.textureId());
@@ -203,6 +243,15 @@ void GsRenderObject::resizeGL(int w, int h) {
   f->glActiveTexture(GL_TEXTURE0);
   f->glBindTexture(GL_TEXTURE_2D, m_texture.textureId());
 }
+
+void GsRenderObject::setDepthIndex(const std::vector<unsigned int>& depthIndex) {
+  QOpenGLExtraFunctions* f = QOpenGLContext::currentContext()->extraFunctions();
+  f->glBindBuffer(GL_ARRAY_BUFFER, m_indexBuffer.bufferId());
+  f->glBufferData(GL_ARRAY_BUFFER, depthIndex.size() * 4, depthIndex.data(), GL_DYNAMIC_DRAW);
+  SPDLOG_INFO("setDepthIndex done");
+}
+
+
 int GsRenderObject::floatToHalf(float val) {
   unsigned int f;
   memcpy(&f, &val, 4);
@@ -226,9 +275,8 @@ int GsRenderObject::floatToHalf(float val) {
   }
   return (sign << 15) | (newExp << 10) | (frac >> 13);
 }
-void GsRenderObject::rotateMatrix(std::mdspan<float, std::extents<std::size_t, 4, 4> > matrix,
-                                  float rad, float x,
-                  float y, float z) {
+void GsRenderObject::rotateMatrix(std::mdspan<float, std::extents<std::size_t, 4, 4>> matrix,
+                                  float rad, float x, float y, float z) {
   float len = std::hypot(x, y, z);
   x /= len;
   y /= len;
@@ -245,12 +293,17 @@ void GsRenderObject::rotateMatrix(std::mdspan<float, std::extents<std::size_t, 4
   float b20 = x * z * t + y * s;
   float b21 = y * z * t - x * s;
   float b22 = z * z * t + c;
-  matrix[std::array{0, 0}] = matrix[std::array{0, 0}] * b00 + matrix[std::array{1, 0}] * b01 + matrix[std::array{2, 0}] * b02;
-  matrix[std::array{0, 1}] = matrix[std::array{0, 1}] * b00 + matrix[std::array{1, 1}] * b01 + matrix[std::array{2, 1}] * b02;
-  matrix[std::array{0, 2}] = matrix[std::array{0, 2}] * b00 + matrix[std::array{1, 2}] * b01 + matrix[std::array{2, 2}] * b02;
-  matrix[std::array{0, 3}] = matrix[std::array{0, 3}] * b00 + matrix[std::array{1, 3}] * b01 + matrix[std::array{2, 3}] * b02;
+  matrix[std::array{0, 0}] = matrix[std::array{0, 0}] * b00 + matrix[std::array{1, 0}] * b01 +
+                             matrix[std::array{2, 0}] * b02;
+  matrix[std::array{0, 1}] = matrix[std::array{0, 1}] * b00 + matrix[std::array{1, 1}] * b01 +
+                             matrix[std::array{2, 1}] * b02;
+  matrix[std::array{0, 2}] = matrix[std::array{0, 2}] * b00 + matrix[std::array{1, 2}] * b01 +
+                             matrix[std::array{2, 2}] * b02;
+  matrix[std::array{0, 3}] = matrix[std::array{0, 3}] * b00 + matrix[std::array{1, 3}] * b01 +
+                             matrix[std::array{2, 3}] * b02;
 
-  matrix[std::array{1, 0}] = matrix[std::array{0, 0}] * b10 + matrix[std::array{1, 0}] * b11 + matrix[std::array{2, 0}] * b12;
+  matrix[std::array{1, 0}] = matrix[std::array{0, 0}] * b10 + matrix[std::array{1, 0}] * b11 +
+                             matrix[std::array{2, 0}] * b12;
   matrix[std::array{1, 1}] = matrix[std::array{0, 1}] * b10 + matrix[std::array{1, 1}] * b11 +
                              matrix[std::array{2, 1}] * b12;
   matrix[std::array{1, 2}] = matrix[std::array{0, 2}] * b10 + matrix[std::array{1, 2}] * b11 +
@@ -267,11 +320,16 @@ void GsRenderObject::rotateMatrix(std::mdspan<float, std::extents<std::size_t, 4
   matrix[std::array{2, 3}] = matrix[std::array{0, 3}] * b20 + matrix[std::array{1, 3}] * b21 +
                              matrix[std::array{2, 3}] * b22;
 }
-void GsRenderObject::translateMatrix(std::mdspan<float, std::extents<std::size_t, 4, 4> > matrix, float x, float y, float z) {
-  matrix[std::array{3, 0}] += matrix[std::array{0, 0}] * x + matrix[std::array{1, 0}] * y + matrix[std::array{2, 0}] * z;
-  matrix[std::array{3, 1}] += matrix[std::array{0, 1}] * x + matrix[std::array{1, 1}] * y + matrix[std::array{2, 1}] * z;
-  matrix[std::array{3, 2}] += matrix[std::array{0, 2}] * x + matrix[std::array{1, 2}] * y + matrix[std::array{2, 2}] * z;
-  matrix[std::array{3, 3}] += matrix[std::array{0, 3}] * x + matrix[std::array{1, 3}] * y + matrix[std::array{2, 3}] * z;
+void GsRenderObject::translateMatrix(std::mdspan<float, std::extents<std::size_t, 4, 4>> matrix,
+                                     float x, float y, float z) {
+  matrix[std::array{3, 0}] +=
+      matrix[std::array{0, 0}] * x + matrix[std::array{1, 0}] * y + matrix[std::array{2, 0}] * z;
+  matrix[std::array{3, 1}] +=
+      matrix[std::array{0, 1}] * x + matrix[std::array{1, 1}] * y + matrix[std::array{2, 1}] * z;
+  matrix[std::array{3, 2}] +=
+      matrix[std::array{0, 2}] * x + matrix[std::array{1, 2}] * y + matrix[std::array{2, 2}] * z;
+  matrix[std::array{3, 3}] +=
+      matrix[std::array{0, 3}] * x + matrix[std::array{1, 3}] * y + matrix[std::array{2, 3}] * z;
 }
 std::vector<unsigned int> GsRenderObject::generateTexture() {
   std::vector<unsigned int> texdata;
@@ -303,7 +361,8 @@ std::vector<unsigned int> GsRenderObject::generateTexture() {
     texdata_c[4 * (8 * i + 7) + 3] = m_data->m_ucharBuffer[32 * i + 24 + 3];
 
     // scale
-    float scale[3] = {m_data->m_floatBuffer[8 * i + 3], m_data->m_floatBuffer[8 * i + 4],  m_data->m_floatBuffer[8 * i + 5]};
+    float scale[3] = {m_data->m_floatBuffer[8 * i + 3], m_data->m_floatBuffer[8 * i + 4],
+                      m_data->m_floatBuffer[8 * i + 5]};
 
     // quaternion
     float rot[4] = {(static_cast<int>(m_data->m_ucharBuffer[32 * i + 28 + 0]) - 128) / 128.0f,
@@ -368,7 +427,7 @@ void GsRenderObject::invertMatrix(std::mdspan<float, std::extents<std::size_t, 4
   float det = b00 * b11 - b01 * b10 + b02 * b09 + b03 * b08 - b04 * b07 + b05 * b06;
   if (det < 0.0000001) {
     return;
-  } 
+  }
   std::array<float, 16> arr{(matrix[std::array{1, 1}] * b11 - matrix[std::array{1, 2}] * b10 +
                              matrix[std::array{1, 3}] * b09) /
                                 det,

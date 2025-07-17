@@ -14,6 +14,10 @@ namespace nimagna {
 RenderObjectManager::RenderObjectManager() {
   mCurrentRenderData = std::make_shared<RenderData>();
   RenderData::ShotFraming3D framing;
+  // set initial camera position to (0, 0, 1) and look at (0, 0, 0) with a FOV angle of 90 degrees
+  framing.setPosition(QVector3D(0.0, 0.0, 1.0));
+  framing.setLookAtPoint(QVector3D(0.0, 0.0, 0.0));
+  framing.setFieldOfViewAngle(90);
   mCurrentRenderData->setFraming3D(framing);
   mCurrentRenderData->setRenderMode(RenderData::RenderMode::Render3D);
 }
@@ -116,28 +120,35 @@ bool RenderObjectManager::render() {
 
   // activate offscreen context with framebuffer as target
   tryMakeOpenGlContextCurrent(false);
-  const bool multisamplingRendering = true;
+  const bool multisamplingRendering = false;
   if (multisamplingRendering) {
     mMultisampleFramebuffer->bind();
   } else {
     mRenderFramebuffer->bind();
   }
 
-  // clear the framebuffer to render a new frame
+  // clear the frame- and depth buffer to render a new frame
   glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
-  glClear(GL_COLOR_BUFFER_BIT);
-  glBlendFunc(GL_ONE, GL_ZERO);
+  glDepthRange(0.0, 1.0);
+  glClearDepth(1.0f);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  // enabled depth testing and set depth function
+  glDepthMask(GL_TRUE);
+  glEnable(GL_DEPTH_TEST);
+  glDepthFunc(GL_LESS);
+  // enable blending for transparency
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
   // render objects only if there's render data for the projection and the list has more than one
   // object (i.e. storyboard + more) or the storyboard is the only item and has content
   if (mCurrentRenderData && (mRenderObjectsList.size() > 0)) {
-    // get camera to world projection 
+    // get camera view and projection matrices
     const QMatrix4x4 projectionMatrix = mCurrentRenderData->projectionMatrix();
+    const QMatrix4x4 viewMatrix = mCurrentRenderData->viewMatrix();
     for (const auto& renderObject : mRenderObjectsList) {
-      // pass the current camera projection to the object
-      renderObject->prepare(projectionMatrix);
-      // let the object draw itself. 
-      renderObject->draw();
+      // let the object draw itself by passing the camera view and projection matrices
+      renderObject->draw(viewMatrix, projectionMatrix);
     }
   }
 
@@ -146,10 +157,6 @@ bool RenderObjectManager::render() {
     QOpenGLFramebufferObject::blitFramebuffer(
         mRenderFramebuffer.get(), mMultisampleFramebuffer.get(), GL_COLOR_BUFFER_BIT,
         GL_LINEAR);  // Blit color buffer with linear filtering
-
-    QOpenGLFramebufferObject::blitFramebuffer(
-        mRenderFramebuffer.get(), mMultisampleFramebuffer.get(), GL_DEPTH_BUFFER_BIT,
-        GL_NEAREST);  // Blit depth buffer with nearest filtering
   }
 
   glFlush();
@@ -164,7 +171,6 @@ bool RenderObjectManager::render() {
 }
 
 void RenderObjectManager::addObject(RenderObjectType type, const QString& filename) {
-
   switch (type) {
     case nimagna::RenderObjectManager::RenderObjectType::kTexture:
       addTextureObject(filename);
@@ -208,8 +214,7 @@ void RenderObjectManager::addTextureObject(const QString& filename) {
 }
 
 void RenderObjectManager::addGltfObject(const QString& filename) {
-  std::shared_ptr<GltfRenderObject> renderObject =
-      std::make_shared<GltfRenderObject>(GltfRenderObject::kDefaultTextureTarget, filename);
+  std::shared_ptr<GltfRenderObject> renderObject = std::make_shared<GltfRenderObject>(filename);
 
   // add object to data structure
   mRenderObjectsList.emplace_back(renderObject);
@@ -248,7 +253,7 @@ void RenderObjectManager::onOutputSettingsChanged() {
 
   // update render frame buffers (MSAA and texture), local storage and viewport
   QOpenGLFramebufferObjectFormat fboMultisamplingFormat;
-  fboMultisamplingFormat.setAttachment(QOpenGLFramebufferObject::Depth);
+  fboMultisamplingFormat.setAttachment(QOpenGLFramebufferObject::Attachment::CombinedDepthStencil);
   fboMultisamplingFormat.setMipmap(true);
   fboMultisamplingFormat.setSamples(8);
   fboMultisamplingFormat.setInternalTextureFormat(GL_RGBA8);
@@ -257,7 +262,7 @@ void RenderObjectManager::onOutputSettingsChanged() {
       mCurrentOutputResolution.width(), mCurrentOutputResolution.height(), fboMultisamplingFormat);
 
   QOpenGLFramebufferObjectFormat fboDownsampledFormat;
-  fboDownsampledFormat.setAttachment(QOpenGLFramebufferObject::Attachment::NoAttachment);
+  fboDownsampledFormat.setAttachment(QOpenGLFramebufferObject::Attachment::CombinedDepthStencil);
   fboDownsampledFormat.setMipmap(false);
   fboDownsampledFormat.setInternalTextureFormat(GL_RGBA8);
   fboDownsampledFormat.setTextureTarget(TextureRenderObject::qGlTarget(mRenderFramebufferTarget));

@@ -84,6 +84,7 @@ void OpenGlWidget::paintGL() {
   glViewport(mViewPort.x(), mViewPort.y(), mViewPort.width(), mViewPort.height());
   glClearColor(0.f, 0.f, 0.f, 1.0f);
   glClear(GL_COLOR_BUFFER_BIT);
+  glBlendFunc(GL_ONE, GL_ZERO);
 
   // render RenderObjectManager's framebuffer as texture to screen
   // only paint if there's a render object manager and it is initialized
@@ -95,7 +96,7 @@ void OpenGlWidget::paintGL() {
         mRenderer->renderObjectManager()->renderFrameBuffer()->texture());
   }
   // render texture object without using its texture
-  mTextureRenderObject->draw();
+  mTextureRenderObject->draw({}, {});
   glActiveTexture(GL_TEXTURE0);
 
   if (!mFirstDrawOccurred) {
@@ -124,11 +125,6 @@ void OpenGlWidget::resizeGL(int w, int h) {
     mViewPort.setY(pixelRatio * (height() - newHeight) / 2);
     mViewPort.setWidth(pixelRatio * width());
     mViewPort.setHeight(pixelRatio * newHeight);
-  }
-  if (mRenderer->renderObjectManager()->isGSobjectAttached) {
-    for (const auto& obj : mRenderer->renderObjectManager()->mGsRenderObjectsList) {
-      obj->resizeGL(w, h);  // or any method on RenderObject
-    }
   }
   SPDLOG_INFO("OpenGlWidget::resizeGL {}, {}, ratio {}", mViewPort.width(), mViewPort.height(),
               ratio);
@@ -164,12 +160,6 @@ void OpenGlWidget::keyPressEvent(QKeyEvent* event) {
     }
     rom->currentRenderData()->setFraming3D(framing3D);
     updateRendering();
-  }
-  if (mRenderer->renderObjectManager()->isGSobjectAttached) {
-    SPDLOG_INFO("Gs keyPressEvent");
-    for (const auto& obj : mRenderer->renderObjectManager()->mGsRenderObjectsList) {
-      obj->keyPressEvent(event);  // or any method on RenderObject
-    }
   }
 }
 
@@ -249,8 +239,8 @@ void OpenGlWidget::wheelEvent(QWheelEvent* event) {
     RenderData::ShotFraming3D framing3D = renderData->framing3D();
     float angle = framing3D.fieldOfViewAngle();
     angle += delta.y() * changeFactor;
-    const float minViewAngle = 5.f;
-    const float maxViewAngle = 80.f;
+    const float minViewAngle = 2.f;
+    const float maxViewAngle = 180.f;
     if (angle < minViewAngle) angle = minViewAngle;
     if (angle > maxViewAngle) angle = maxViewAngle;
     framing3D.setFieldOfViewAngle(angle);

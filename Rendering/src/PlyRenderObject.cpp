@@ -19,7 +19,7 @@ void PlyRenderObject::initialize() {
     // Additional initialization (buffers, VAO, textures) can be added here
 }
 
-void PlyRenderObject::draw() {
+void PlyRenderObject::draw(const QMatrix4x4& viewMatrix, const QMatrix4x4& projectionMatrix) {
     if (!mShaderProgram) return;
     mShaderProgram->bind();
     // Bind VAO, textures, set uniforms, etc.

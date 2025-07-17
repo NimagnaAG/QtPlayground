@@ -2,7 +2,6 @@
 
 #include "Rendering/RenderObject.h"
 
-
 namespace nimagna {
 
 RenderObject::RenderObject() : mIsInitialized(false), mLayer(0) {}
@@ -11,15 +10,10 @@ void RenderObject::initialize() {
   mIsInitialized = true;
 }
 
-void RenderObject::prepare(const QMatrix4x4& vp) {
-  mViewProjectionMatrix = vp;
+void RenderObject::setModelMatrix(const QMatrix4x4& modelMatrix) {
+  mModelMatrix = modelMatrix;
+  emit propertiesChanged();
 }
-
-
-const QMatrix4x4& RenderObject::getModelMatrix() const {
-  return mModelMatrix;
-}
-
 
 bool RenderObject::isInitialized() const {
   return mIsInitialized;

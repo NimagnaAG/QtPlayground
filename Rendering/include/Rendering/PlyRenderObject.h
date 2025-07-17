@@ -35,11 +35,8 @@ class RENDERING_API PlyRenderObject : public RenderObject, protected QOpenGLFunc
   // initializes the render object.
   virtual void initialize() override;
    
-
   // draws the render object.
-  virtual void draw() override;
-  virtual void keyPressEvent(QKeyEvent* event) override {};
-  virtual void resizeGL(int w, int h) override {};
+  virtual void draw(const QMatrix4x4& viewMatrix, const QMatrix4x4& projectionMatrix) override;
   
  protected:
   // the vertex shader code

@@ -92,28 +92,36 @@ void RenderData::setFraming3D(const ShotFraming3D& framing3D) {
   mShotFraming3D = framing3D;
 }
 
-QMatrix4x4 RenderData::projectionMatrix() const {
-  QMatrix4x4 projM;
+QMatrix4x4 RenderData::viewMatrix() const {
+  QMatrix4x4 viewMatrix;
   if (is2D()) {
     // 2D projection
-    projM.setToIdentity();
+    viewMatrix.setToIdentity();
+  } else {
+    // 3D projection
+    const auto& framing = framing3D();
+    const QVector3D upVector(0, 1, 0);
+    viewMatrix.lookAt(framing.position(), framing.lookAtPoint(), upVector);
+  }
+  return viewMatrix;
+}
+
+QMatrix4x4 RenderData::projectionMatrix() const {
+  QMatrix4x4 projectionMatrix;
+  if (is2D()) {
+    // 2D projection
     const auto& framing = framing2D();
-    projM.ortho(framing.left(), framing.right(), framing.bottom(), framing.top(),
+    projectionMatrix.ortho(framing.left(), framing.right(), framing.bottom(), framing.top(),
                 -100 /*nearPlane*/, 100 /*farPlane*/);
   } else {
     // 3D projection
     const auto& framing = framing3D();
-    QMatrix4x4 view;
-    const QVector3D upVector(0, 1, 0);
-    view.lookAt(framing.position(), framing.lookAtPoint(), upVector);
-    QMatrix4x4 proj;
     const float aspectRatio = 1.0f;
     const float nearPlane = 0.1f;
     const float farPlane = 100.f;
-    proj.perspective(framing.fieldOfViewAngle(), aspectRatio, nearPlane, farPlane);
-    projM = proj * view;
+    projectionMatrix.perspective(framing.fieldOfViewAngle(), aspectRatio, nearPlane, farPlane);
   }
-  return projM;
+  return projectionMatrix;
 }
 
 }  // namespace nimagna

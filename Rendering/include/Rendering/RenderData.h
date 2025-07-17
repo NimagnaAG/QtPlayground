@@ -98,6 +98,7 @@ class RENDERING_API RenderData : public QObject {
   void setFraming2D(const ShotFraming2D& framing2D);
   void setFraming3D(const ShotFraming3D& framing3D);
 
+  QMatrix4x4 viewMatrix() const;
   QMatrix4x4 projectionMatrix() const;
 
  protected:
