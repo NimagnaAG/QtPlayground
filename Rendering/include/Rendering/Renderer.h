@@ -8,8 +8,10 @@
 
 namespace nimagna {
 
-// The render worker performs the rendering work in a separate thread launched and owned by the
-// Renderer
+/**
+The render worker performs the rendering work in a separate thread launched and owned by the
+Renderer. The RenderWorker has a timer that triggers the rendering at a fixed frame rate.
+*/
 class RenderWorker final : public QObject {
   Q_OBJECT
  public:
@@ -40,11 +42,11 @@ class RenderWorker final : public QObject {
   void loadImage(QString filename);
   // loads a gltf mesh
   void loadGLTF(QString filename);
-  // loads a v-splat/GS 
+  // loads a v-splat/GS
   void loadGS(QString filename);
   void loadPLY(QString filename);
  signals:
-  // signals a rendered frame to the consumer, e.g. the virtual camera
+  // signals a rendered frame to the consumer, e.g. the openGL widget
   void renderFrameReady();
 
  private slots:
@@ -62,7 +64,8 @@ class RenderWorker final : public QObject {
   std::atomic_bool mIsActive = false;
 };
 
-// The exposed Renderer manages the render thread and triggers actions through the (queued) signals.
+// The exposed Renderer manages the render thread and owns the RenderObjectManager.
+// It triggers actions through the (queued) signals.
 // In a threaded environment, the OpenGL context and offscreen surface must be created in the main
 // (gui) thread and then moved to the rendering thread. Therefore, the Renderer handles this in the
 // start() method.
@@ -89,7 +92,7 @@ class RENDERING_API Renderer final : public QObject {
 
   // access to the ROM
   std::shared_ptr<RenderObjectManager> renderObjectManager() const;
- 
+
  signals:
   // initialize the render worker
   void initializeRenderer();
@@ -103,9 +106,10 @@ class RENDERING_API Renderer final : public QObject {
   void renderFrameUpdated();
 
   void loadImage(QString filename);
-  void loadGLTF(QString filename); 
+  void loadGLTF(QString filename);
   void loadGS(QString filename);
   void loadPLY(QString filename);
+
  private:
   // The render worker performs the rendering
   std::unique_ptr<RenderWorker> mRenderWorker;
@@ -114,6 +118,5 @@ class RENDERING_API Renderer final : public QObject {
   std::shared_ptr<QOffscreenSurface> mOffscreenSurface;
   // In threaded mode, the render worker runs the rendering thread
   std::unique_ptr<QThread> mRenderThread;
-  std::shared_ptr<QOpenGLContext> context;
 };
 }  // namespace nimagna

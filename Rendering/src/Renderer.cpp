@@ -22,6 +22,7 @@ void RenderWorker::initializeRendering() {
 
 void RenderWorker::startRendering(std::shared_ptr<QOpenGLContext> context,
                                   std::shared_ptr<QOffscreenSurface> surface) {
+  // receives the context created in the renderer and passes it to the ROM
   assert(context);
   assert(surface);
   SPDLOG_INFO("Start rendering");
@@ -60,10 +61,10 @@ void RenderWorker::loadGLTF(QString filename) {
   SPDLOG_INFO("A GLTF Should be displayed now..: " + filename);
   // add gltf viewer / loader here
 }
-  // loads a GS / video
-void RenderWorker::loadGS(QString filename){
-   if (!mRenderObjectManager) return; 
-  mRenderObjectManager->addGsObject(filename ); 
+// loads a GS / video
+void RenderWorker::loadGS(QString filename) {
+  if (!mRenderObjectManager) return;
+  mRenderObjectManager->addGsObject(filename);
   SPDLOG_INFO("A Gaussian Splat Should be displayed now..: " + filename);
 }
 // loads a GS / video
@@ -147,7 +148,7 @@ void Renderer::start(QOpenGLContext* shareContext) {
   // Create OpenGL context
   // Note: destruction can happen in the render thread, thus, we do not keep a reference but just
   // pass it on to the render worker
-  context = std::make_shared<QOpenGLContext>();
+  auto context = std::make_shared<QOpenGLContext>();
   context->setFormat(format);
   // share context with the main context
   context->setShareContext(shareContext);

@@ -7,14 +7,34 @@
 #include <QtOpenGL/QOpenGLDebugLogger>
 #include <QtOpenGL/QOpenGLFramebufferObject>
 
-#include "Rendering/RenderObject.h"
 #include "Rendering/RenderData.h"
+#include "Rendering/RenderObject.h"
 #include "Rendering/Rendering.h"
 #include "Rendering/TextureRenderObject.h"
 
 namespace nimagna {
 
-// the RenderObjectManager is a data structure holding RenderObjects
+/*
+ The RenderObjectManager is the core of the rendering system.
+
+ It renders the render objects into an offscreen framebuffer object (FBO) in a separate thread and
+ using its own context. This can be done using multisampling or not. All render objects are stored
+ in a list and render itself into the FBO. The RenderObjectManager offers the offscreen
+ framebuffer object as a texture to the OpenGL widget.
+
+ The resolution of the offscreen framebuffer object is fixed to 1080x720 pixels by default, but
+ should be considered as potentially dynamic. The RenderObjectManager::onOutputSettingsChanged is
+ resposible to update the FBO if the rendering resolution changes.
+
+ The camera/world/object projection works as follows:
+ - The RenderObjectManager uses the RenderData in mCurrentRenderData as the camera to world
+ projection. This can be altered using the trackball and keyboard controls from the OpenGlWidget.
+ - Each render object can have its own transformation matrix, defining the position, rotation, and
+ scale of the object in the world coordinate system.
+ - During rendering, the RenderObjectManager prepares each object with the projection matrix from
+ mCurrentRenderData to each object such that the object gets the full model view projection matrix.
+ - Then, the object renders itself into the framebuffer object.
+ */
 class RENDERING_API RenderObjectManager final : public QObject {
   Q_OBJECT
 
@@ -33,8 +53,10 @@ class RENDERING_API RenderObjectManager final : public QObject {
   using RenderObjectList = std::vector<std::shared_ptr<RenderObject>>;
   using FrameSourceUuidToRenderObjectMap = std::map<QUuid, std::shared_ptr<RenderObject>>;
 
+  // access the current camera to world information
   const std::shared_ptr<RenderData>& currentRenderData() const { return mCurrentRenderData; };
   bool isInitialized() const { return mIsInitialized; }
+  // access the render frame buffer to be rendered as texture in the OpenGlWidget
   const std::unique_ptr<QOpenGLFramebufferObject>& renderFrameBuffer() const {
     return mRenderFramebuffer;
   }
@@ -42,22 +64,27 @@ class RENDERING_API RenderObjectManager final : public QObject {
     return mRenderFramebufferTarget;
   }
 
+  // methods to add render objects
   void addTextureObject(const QString& filename);
   void addGltfObject(const QString& filename);
   void addGsObject(const QString& filename);
   void addGeoGsObject(const QString& filename);
   void addPlyObject(const QString& filename);
+
+  // the render objects
   const RenderObjectList& renderObjects() const;
   const RenderObjectList& activeRenderObjects() const;
   bool isActiveRenderObject(const std::shared_ptr<RenderObject> renderObject) const;
   void changeOpenGlDebugging(bool enabled);
   RenderObjectList mGsRenderObjectsList;
-  bool isGSobjectAttached = false; 
+  bool isGSobjectAttached = false;
+
  private:
   // pass the context to the render object manager and initialize
-  bool render();
   void initialize(std::shared_ptr<QOpenGLContext> context,
                   std::shared_ptr<QOffscreenSurface> surface);
+  // perform a rendering step
+  bool render();
   void cleanUp();
 
  protected slots:
@@ -96,7 +123,6 @@ class RENDERING_API RenderObjectManager final : public QObject {
 
   // the core application
   std::shared_ptr<RenderData> mCurrentRenderData;
-
 };
 
 }  // namespace nimagna

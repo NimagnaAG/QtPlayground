@@ -11,6 +11,11 @@ namespace nimagna {
 
 class RenderObjectManager;
 
+/** 
+ * The OpenGlWidget is a QOpenGLWidget that renders the content of the RenderObjectManager.
+ * It lives in the main thread and gets the render frame buffer from the RenderObjectManager which it renders as a simple texture.
+ * Do not change.
+ */
 class OpenGlWidget : public QOpenGLWidget, protected QOpenGLFunctions_4_0_Core {
   Q_OBJECT
  public:

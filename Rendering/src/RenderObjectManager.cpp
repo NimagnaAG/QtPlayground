@@ -2,12 +2,13 @@
 
 #include "Rendering/RenderObjectManager.h"
 
+#include <Rendering/GeoGsRenderObject.h>
+#include <Rendering/GltfRenderObject.h>
+#include <Rendering/GsRenderObject.h>
+
 #include <QtCore/QThread>
 #include <QtGui/QPainter>
 #include <QtOpenGL/QOpenGLPaintDevice>
-#include <Rendering/GltfRenderObject.h>
-#include <Rendering/GsRenderObject.h>
-#include <Rendering/GeoGsRenderObject.h>
 namespace nimagna {
 
 RenderObjectManager::RenderObjectManager() {
@@ -121,20 +122,26 @@ bool RenderObjectManager::render() {
   } else {
     mRenderFramebuffer->bind();
   }
-  
+
+  // clear the framebuffer to render a new frame
+  glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
+  glClear(GL_COLOR_BUFFER_BIT);
+  glBlendFunc(GL_ONE, GL_ZERO);
+
   // render objects only if there's render data for the projection and the list has more than one
   // object (i.e. storyboard + more) or the storyboard is the only item and has content
   if (mCurrentRenderData && (mRenderObjectsList.size() > 0)) {
-    // get projection from shot
+    // get camera to world projection 
     const QMatrix4x4 projectionMatrix = mCurrentRenderData->projectionMatrix();
     for (const auto& renderObject : mRenderObjectsList) {
-     //
+      // pass the current camera projection to the object
       renderObject->prepare(projectionMatrix);
+      // let the object draw itself. 
       renderObject->draw();
     }
   }
 
-if (multisamplingRendering) {
+  if (multisamplingRendering) {
     // Blit the multisampling framebuffer to the render framebuffer
     QOpenGLFramebufferObject::blitFramebuffer(
         mRenderFramebuffer.get(), mMultisampleFramebuffer.get(), GL_COLOR_BUFFER_BIT,
@@ -148,7 +155,7 @@ if (multisamplingRendering) {
   glFlush();
   mRenderFramebuffer->bindDefault();
 
-      GLenum error = glGetError();
+  GLenum error = glGetError();
   if (error != GL_NO_ERROR) {
     SPDLOG_ERROR("OpenGL error: {}", error);
   }
@@ -169,7 +176,7 @@ void RenderObjectManager::addTextureObject(const QString& filename) {
   if (qImage.isNull()) {
     SPDLOG_ERROR("No image: {}", filename);
     return;
-  } 
+  }
   std::shared_ptr<TextureRenderObject> renderObject =
       std::make_shared<TextureRenderObject>(TextureRenderObject::kDefaultTextureTarget, qImage);
   renderObject->setDisplayName(filename);
@@ -194,7 +201,7 @@ void RenderObjectManager::addGsObject(const QString& filename) {
   // add object to data structure
   mGsRenderObjectsList.emplace_back(renderObject);
   mRenderObjectsList.emplace_back(renderObject);
-    isGSobjectAttached = true;
+  isGSobjectAttached = true;
 }
 void RenderObjectManager::addGeoGsObject(const QString& filename) {
   std::shared_ptr<GeoGsRenderObject> renderObject = std::make_shared<GeoGsRenderObject>(
@@ -204,18 +211,18 @@ void RenderObjectManager::addGeoGsObject(const QString& filename) {
   // add object to data structure
   mGsRenderObjectsList.emplace_back(renderObject);
   mRenderObjectsList.emplace_back(renderObject);
-    isGSobjectAttached = true;
+  isGSobjectAttached = true;
 }
 void RenderObjectManager::addPlyObject(const QString& filename) {
-  std::shared_ptr<GsRenderObject> renderObject = std::make_shared<GsRenderObject>(filename);//, mContext->screen()->geometry());
+  std::shared_ptr<GsRenderObject> renderObject =
+      std::make_shared<GsRenderObject>(filename);  //, mContext->screen()->geometry());
   renderObject->setDisplayName(filename);
   // mGsRenderObject = renderObject;
   // add object to data structure
   mGsRenderObjectsList.emplace_back(renderObject);
   mRenderObjectsList.emplace_back(renderObject);
-    isGSobjectAttached = true;
+  isGSobjectAttached = true;
 }
-
 
 void RenderObjectManager::onOutputSettingsChanged() {
   tryMakeOpenGlContextCurrent(false);
