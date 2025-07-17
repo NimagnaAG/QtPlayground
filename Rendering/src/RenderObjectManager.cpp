@@ -171,80 +171,52 @@ bool RenderObjectManager::render() {
 }
 
 void RenderObjectManager::addObject(RenderObjectType type, const QString& filename) {
+  std::shared_ptr<RenderObject> renderObject;
   switch (type) {
     case nimagna::RenderObjectManager::RenderObjectType::kTexture:
-      addTextureObject(filename);
+      renderObject = createTextureObject(filename);
       break;
     case nimagna::RenderObjectManager::RenderObjectType::kGltf:
-      addGltfObject(filename);
+      renderObject = std::make_shared<GltfRenderObject>(filename);
       break;
     case nimagna::RenderObjectManager::RenderObjectType::kGs:
-      addGsObject(filename);
+      renderObject =
+          std::make_shared<GeoGsRenderObject>(GeoGsRenderObject::kDefaultTextureTarget, filename);
       break;
     case nimagna::RenderObjectManager::RenderObjectType::kGeoGs:
-      addGeoGsObject(filename);
+      renderObject =
+          std::make_shared<GeoGsRenderObject>(GeoGsRenderObject::kDefaultTextureTarget, filename);
       break;
     case nimagna::RenderObjectManager::RenderObjectType::kPly:
-      addPlyObject(filename);
+      renderObject = std::make_shared<GsRenderObject>(filename);
       break;
     default:
       break;
   }
+  if (renderObject) {
+    emit beginInsertRows((int)mRenderObjectsList.size(), (int)mRenderObjectsList.size());
+    mRenderObjectsList.emplace_back(renderObject);
+    emit endInsertRows();
+  }
 }
 
-const RenderObjectManager::RenderObjectList& RenderObjectManager::renderObjects() const {
+RenderObjectManager::RenderObjectList& RenderObjectManager::renderObjects() {
   return mRenderObjectsList;
 }
 
 void RenderObjectManager::clearRenderObjects() {
+  emit beginReset();
   mRenderObjectsList.clear();
+  emit endReset();
 }
 
-void RenderObjectManager::addTextureObject(const QString& filename) {
+std::shared_ptr<RenderObject> RenderObjectManager::createTextureObject(const QString& filename) {
   auto qImage = QImage(filename);
   if (qImage.isNull()) {
     SPDLOG_ERROR("No image: {}", filename);
-    return;
+    return nullptr;
   }
-  std::shared_ptr<TextureRenderObject> renderObject =
-      std::make_shared<TextureRenderObject>(TextureRenderObject::kDefaultTextureTarget, qImage);
-
-  // add object to data structure
-  mRenderObjectsList.emplace_back(renderObject);
-}
-
-void RenderObjectManager::addGltfObject(const QString& filename) {
-  std::shared_ptr<GltfRenderObject> renderObject = std::make_shared<GltfRenderObject>(filename);
-
-  // add object to data structure
-  mRenderObjectsList.emplace_back(renderObject);
-}
-void RenderObjectManager::addGsObject(const QString& filename) {
-  std::shared_ptr<GeoGsRenderObject> renderObject = std::make_shared<GeoGsRenderObject>(
-      GeoGsRenderObject::kDefaultTextureTarget, filename);  //, mContext->screen()->geometry());
-  // mGsRenderObject = renderObject;
-  // add object to data structure
-  mGsRenderObjectsList.emplace_back(renderObject);
-  mRenderObjectsList.emplace_back(renderObject);
-  isGSobjectAttached = true;
-}
-void RenderObjectManager::addGeoGsObject(const QString& filename) {
-  std::shared_ptr<GeoGsRenderObject> renderObject = std::make_shared<GeoGsRenderObject>(
-      GeoGsRenderObject::kDefaultTextureTarget, filename);  //, mContext->screen()->geometry());
-  // mGsRenderObject = renderObject;
-  // add object to data structure
-  mGsRenderObjectsList.emplace_back(renderObject);
-  mRenderObjectsList.emplace_back(renderObject);
-  isGSobjectAttached = true;
-}
-void RenderObjectManager::addPlyObject(const QString& filename) {
-  std::shared_ptr<GsRenderObject> renderObject =
-      std::make_shared<GsRenderObject>(filename);  //, mContext->screen()->geometry());
-  // mGsRenderObject = renderObject;
-  // add object to data structure
-  mGsRenderObjectsList.emplace_back(renderObject);
-  mRenderObjectsList.emplace_back(renderObject);
-  isGSobjectAttached = true;
+  return std::make_shared<TextureRenderObject>(TextureRenderObject::kDefaultTextureTarget, qImage);
 }
 
 void RenderObjectManager::onOutputSettingsChanged() {

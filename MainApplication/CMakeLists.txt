@@ -12,6 +12,7 @@ cmake_policy(SET CMP0142 NEW)
 set(Header_Files
     "include/MainWindow.h"
     "include/OpenGlWidget.h"
+    "include/RenderObjectManagerViewModel.h"
     "include/LoggerMainApplication.h"
     "include/pch.h"
 )
@@ -27,6 +28,7 @@ set(Source_Files
     "src/MainWindow.cpp"
     "src/LoggerMainApplication.cpp"
     "src/OpenGlWidget.cpp"
+    "src/RenderObjectManagerViewModel.cpp"
     "src/pch.cpp"
 )
 source_group("Source Files" FILES ${Source_Files})

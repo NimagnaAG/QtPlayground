@@ -39,9 +39,12 @@ class RenderWorker final : public QObject {
   // stops the rendering and tears down the ROM
   void stopRendering();
 
+  // add/clear objects
   void addObject(RenderObjectManager::RenderObjectType type, const QString& filename);
+  void clear();
 
  signals:
+  void initialized();
   // signals a rendered frame to the consumer, e.g. the openGL widget
   void renderFrameReady();
 
@@ -82,7 +85,9 @@ class RENDERING_API Renderer final : public QObject {
   // stop the rendering
   void stop();
 
+  // actions to add render objects of specific types
   void addObject(RenderObjectManager::RenderObjectType type, const QString& filename);
+  void clear();
 
   // access to the ROM
   std::shared_ptr<RenderObjectManager> renderObjectManager() const;
@@ -100,6 +105,10 @@ class RENDERING_API Renderer final : public QObject {
   void renderFrameUpdated();
   // signal to add a render object of a specific type
   void objectAddRequest(RenderObjectManager::RenderObjectType type, const QString& filename);
+  void clearRequest();
+
+  // signals outbound that the rendering is initialized
+  void initialized();
 
  private:
   // The render worker performs the rendering

@@ -34,10 +34,7 @@ void GeoGsRenderObject::initialize() {
   initializeOpenGLFunctions();
 
   // define model matrix
-  auto modelMatrix = getModelMatrix();
-  modelMatrix.setToIdentity();
-  modelMatrix.scale(0.01f);
-  setModelMatrix(modelMatrix);
+  setScale(0.01f);
 
   // load file
   QString fileExtension = mGsLocation.split(".").last();
@@ -205,17 +202,17 @@ void GeoGsRenderObject::sort(const QMatrix4x4& viewProj) {
   m_ebo.allocate(indices.data(), int(indices.size() * sizeof(uint32_t)));
 }
 
-//void GeoGsRenderObject::resizeGL(int w, int h) {
-//  QOpenGLExtraFunctions* f = QOpenGLContext::currentContext()->extraFunctions();
-//  GLfloat tabFloat[] = {static_cast<GLfloat>(focalWidth), static_cast<GLfloat>(focalHeight)};
-//  // m_projectionMatrix = getProjectionMatrix(focalWidth, focalHeight, w, h);
-//  // GLfloat innerTab[] = {static_cast<GLfloat>(w), static_cast<GLfloat>(h)};
-//  // f->glUniform2fv(m_viewPortLoc, 1, mViewProjectionMatrix.data());
-//  viewportw = w;
-//  viewporth = h;
-//  // f->glUniformMatrix4fv(m_projMatrixLoc, 1, false, m_projectionMatrix.data());
-//  SPDLOG_INFO("GeoGsRenderObject resizeGL done ");
-//}
+// void GeoGsRenderObject::resizeGL(int w, int h) {
+//   QOpenGLExtraFunctions* f = QOpenGLContext::currentContext()->extraFunctions();
+//   GLfloat tabFloat[] = {static_cast<GLfloat>(focalWidth), static_cast<GLfloat>(focalHeight)};
+//   // m_projectionMatrix = getProjectionMatrix(focalWidth, focalHeight, w, h);
+//   // GLfloat innerTab[] = {static_cast<GLfloat>(w), static_cast<GLfloat>(h)};
+//   // f->glUniform2fv(m_viewPortLoc, 1, mViewProjectionMatrix.data());
+//   viewportw = w;
+//   viewporth = h;
+//   // f->glUniformMatrix4fv(m_projMatrixLoc, 1, false, m_projectionMatrix.data());
+//   SPDLOG_INFO("GeoGsRenderObject resizeGL done ");
+// }
 
 const std::map<GeoGsRenderObject::SourcePixelFormat, QImage::Format>
     GeoGsRenderObject::kSourcePixelFormatToQImageFormatMap = {

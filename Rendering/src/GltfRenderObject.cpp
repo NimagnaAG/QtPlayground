@@ -56,11 +56,7 @@ void GltfRenderObject::initialize() {
   }
 
   // initialize model matrix
-  auto modelMatrix = getModelMatrix();
-  modelMatrix.setToIdentity();
-  modelMatrix.scale(0.5f);
-  // modelMatrix.rotate(270, {1.f, 0.f, 0.f});
-  setModelMatrix(modelMatrix);
+  setScale(0.5f);
 
   // load and compile shader
   setupShaderPrograms();
@@ -272,7 +268,7 @@ void GltfRenderObject::draw(const QMatrix4x4& viewMatrix, const QMatrix4x4& proj
 
   // bind and update shader program
   mShaderProgram->bind();
-  mShaderProgram->setUniformValue("model", getModelMatrix());
+  mShaderProgram->setUniformValue("model", modelMatrix());
   mShaderProgram->setUniformValue("view", viewMatrix);
   mShaderProgram->setUniformValue("projection", projectionMatrix);
 

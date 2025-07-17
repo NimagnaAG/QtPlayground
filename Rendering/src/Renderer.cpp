@@ -32,6 +32,7 @@ void RenderWorker::startRendering(std::shared_ptr<QOpenGLContext> context,
   createAndStartTimerIfNeeded();
   // set active flag
   mIsActive = true;
+  emit initialized();
 }
 
 void RenderWorker::stopRendering() {
@@ -51,6 +52,11 @@ void RenderWorker::stopRendering() {
 void RenderWorker::addObject(RenderObjectManager::RenderObjectType type, const QString& filename) {
   if (!mRenderObjectManager) return;
   mRenderObjectManager->addObject(type, filename);
+}
+
+void RenderWorker::clear() {
+  if (!mRenderObjectManager) return;
+  mRenderObjectManager->clearRenderObjects();
 }
 
 void RenderWorker::render() {
@@ -90,13 +96,13 @@ Renderer::Renderer() {
   connect(this, &Renderer::startRenderer, mRenderWorker.get(), &RenderWorker::startRendering);
   connect(this, &Renderer::stopRenderer, mRenderWorker.get(), &RenderWorker::stopRendering);
   connect(this, &Renderer::objectAddRequest, mRenderWorker.get(), &RenderWorker::addObject);
+  connect(this, &Renderer::clearRequest, mRenderWorker.get(), &RenderWorker::clear);
+  connect(mRenderWorker.get(), &RenderWorker::initialized, this, &Renderer::initialized);
   connect(mRenderWorker.get(), &RenderWorker::renderFrameReady, this,
           &Renderer::renderFrameUpdated);
 
   const auto isThreaded = true;
   if (isThreaded) {
-    SPDLOG_WARN("Rendering is threaded! This is a beta feature!");
-    // This is a beta feature that does not work on all systems!
     // Create the render thread ...
     mRenderThread = std::make_unique<QThread>();
     // ... and move the worker to the render thread ...
@@ -198,6 +204,10 @@ void Renderer::stop() {
 
 void Renderer::addObject(RenderObjectManager::RenderObjectType type, const QString& filename) {
   emit objectAddRequest(type, filename);
+}
+
+void Renderer::clear() {
+  emit clearRequest();
 }
 
 }  // namespace nimagna

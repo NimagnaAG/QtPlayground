@@ -50,8 +50,26 @@ class RENDERING_API RenderObject : public QObject {
   // preserved between two draw calls.
   virtual void draw(const QMatrix4x4& viewMatrix, const QMatrix4x4& projectionMatrix) = 0;
   // get and set the model matrix
-  const QMatrix4x4& getModelMatrix() const { return mModelMatrix; }
-  void setModelMatrix(const QMatrix4x4& modelMatrix);
+  const QMatrix4x4& modelMatrix() const { return mModelMatrix; }
+
+  const QVector3D& position() const { return mPosition; }
+  void setPosition(const QVector3D& position) {
+    mPosition = position;
+    updateModelMatrix();
+    emit propertiesChanged();
+  }
+  const QVector3D& rotation() const { return mRotation; }
+  void setRotation(const QVector3D& rotationAngles) {
+    mRotation = rotationAngles;
+    updateModelMatrix();
+    emit propertiesChanged();
+  }
+  const float& scale() const { return mScale; }
+  void setScale(float scale) {
+    mScale = std::clamp(scale, 0.01f, 100.0f);  // prevent scale from being too small or too large
+    updateModelMatrix();
+    emit propertiesChanged();
+  }
 
   // check if initialized
   bool isInitialized() const;
@@ -67,9 +85,13 @@ class RENDERING_API RenderObject : public QObject {
   bool mIsReadyForRendering = true;
 
  private:
+  QVector3D mPosition = {0.0f, 0.0f, 0.0f};
+  QVector3D mRotation = {0.0f, 0.0f, 0.0f};
+  float mScale = 1.0f;
   // the object's own model matrix defines the position, rotation, and scale of the object in the
   // world coordinate system.
   QMatrix4x4 mModelMatrix;
+  void updateModelMatrix();
   // flag indicating if that render object is initialized
   bool mIsInitialized;
   // the layer is a volatile member used to sort render objects in the rendering pipeline.

@@ -3,6 +3,7 @@
 #include <QtCore/QFileSystemWatcher>
 #include <QtCore/QThread>
 
+#include "RenderObjectManagerViewModel.h"
 #include "Rendering/RenderObjectManager.h"
 #include "Rendering/Renderer.h"
 #include "ui_MainWindow.h"
@@ -32,6 +33,8 @@ class MainWindow : public QMainWindow {
   void on_test_triggered();
   void on_gsload_triggered();
   void on_plyload_triggered();
+  // button actions
+  void on_clearPushButton_clicked();
   // --- Callback from OpenGL window once initialized
   void onOpenGlWidgetInitialized() const;
 
@@ -40,6 +43,7 @@ class MainWindow : public QMainWindow {
 
   Ui::MainWindow mUI;
   std::shared_ptr<Renderer> mRenderer;
+  std::unique_ptr<RenderObjectManagerViewModel> mRenderObjectManagerViewModel;
 };
 
 }  // namespace nimagna

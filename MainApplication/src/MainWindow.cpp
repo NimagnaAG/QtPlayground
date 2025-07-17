@@ -16,6 +16,10 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
   mRenderer = std::make_shared<Renderer>();
   mUI.openGLWidget->setRenderer(mRenderer);
   connectSignalsAndSlots();
+
+  // create view model for the render object manager
+  mRenderObjectManagerViewModel = std::make_unique<RenderObjectManagerViewModel>(mRenderer);
+  mUI.tableView->setModel(mRenderObjectManagerViewModel.get());
 }
 
 MainWindow::~MainWindow() {
@@ -64,6 +68,11 @@ void MainWindow::on_plyload_triggered() {
     mRenderer->addObject(RenderObjectManager::RenderObjectType::kPly, fileName);
   }
 }
+
+void MainWindow::on_clearPushButton_clicked() {
+  mRenderer->clear();
+}
+
 void MainWindow::onOpenGlWidgetInitialized() const {
   mRenderer->start(mUI.openGLWidget->context());
   mUI.openGLWidget->update();

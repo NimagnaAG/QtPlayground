@@ -10,11 +10,6 @@ void RenderObject::initialize() {
   mIsInitialized = true;
 }
 
-void RenderObject::setModelMatrix(const QMatrix4x4& modelMatrix) {
-  mModelMatrix = modelMatrix;
-  emit propertiesChanged();
-}
-
 bool RenderObject::isInitialized() const {
   return mIsInitialized;
 }
@@ -26,6 +21,18 @@ void RenderObject::setLayer(int layer) {
 
 int RenderObject::layer() const {
   return mLayer;
+}
+
+void RenderObject::updateModelMatrix() {
+  QMatrix4x4 modelMatrix;
+  mModelMatrix.setToIdentity();
+  modelMatrix.translate(mPosition);
+  modelMatrix.rotate(mRotation.x(), {1.0, 0.0, 0.0});
+  modelMatrix.rotate(mRotation.y(), {0.0, 1.0, 0.0});
+  modelMatrix.rotate(mRotation.z(), {0.0, 0.0, 1.0});
+  modelMatrix.scale(mScale);
+  mModelMatrix = modelMatrix;
+  emit propertiesChanged();
 }
 
 }  // namespace nimagna

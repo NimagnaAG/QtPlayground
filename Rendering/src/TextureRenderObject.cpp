@@ -232,7 +232,7 @@ void TextureRenderObject::draw(const QMatrix4x4& viewMatrix, const QMatrix4x4& p
   // prepare to set it)
   // to create the full model-view-projection matrix, we need to multiply the view projection with
   // the object's model matrix
-  const QMatrix4x4 mvp = projectionMatrix * viewMatrix * getModelMatrix();
+  const QMatrix4x4 mvp = projectionMatrix * viewMatrix * modelMatrix();
   // this is passed to the shader program's vertex shader to transform each vertex position into
   // camera view space
   mShaderProgram->setUniformValue(mWorldTransformationShaderPosition, mvp);
