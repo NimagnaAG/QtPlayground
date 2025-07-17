@@ -19,6 +19,7 @@ OpenGlWidget::OpenGlWidget(QWidget* parent /*= nullptr*/, Qt::WindowFlags f /*= 
   format.setVersion(4, 0);
   format.setSamples(8);
   setFormat(format);
+  setFocusPolicy(Qt::StrongFocus);
   setMouseTracking(true);
 }
 
@@ -123,19 +124,19 @@ void OpenGlWidget::resizeGL(int w, int h) {
     mViewPort.setY(pixelRatio * (height() - newHeight) / 2);
     mViewPort.setWidth(pixelRatio * width());
     mViewPort.setHeight(pixelRatio * newHeight);
-  } 
+  }
   if (mRenderer->renderObjectManager()->isGSobjectAttached) {
     for (const auto& obj : mRenderer->renderObjectManager()->mGsRenderObjectsList) {
       obj->resizeGL(w, h);  // or any method on RenderObject
-    } 
+    }
   }
-  SPDLOG_INFO("OpenGlWidget::resizeGL {}, {}, ratio {}", mViewPort.width(),
-              mViewPort.height(),  ratio);
+  SPDLOG_INFO("OpenGlWidget::resizeGL {}, {}, ratio {}", mViewPort.width(), mViewPort.height(),
+              ratio);
   QOpenGLWidget::resizeGL(w, h);
 }
 
-void OpenGlWidget::keyPressEvent(QKeyEvent* event) { 
-    if (event->key() == Qt::Key_Shift) {
+void OpenGlWidget::keyPressEvent(QKeyEvent* event) {
+  if (event->key() == Qt::Key_Shift) {
     mShiftKeyDown = true;
   }
   const float stepLength = 0.1f;

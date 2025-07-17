@@ -75,15 +75,5 @@ void MainWindow::connectSignalsAndSlots() {
   connect(mUI.openGLWidget, &OpenGlWidget::initialized, this,
           &MainWindow::onOpenGlWidgetInitialized);
 }
-bool MainWindow::event(QEvent* event) {
-  if (event->type() == QEvent::KeyPress) {
-    QKeyEvent* keyEvent = static_cast<QKeyEvent*>(event);
-    SPDLOG_INFO("Key Pressed: {}", keyEvent->key());
-    mUI.openGLWidget->keyPressEvent(keyEvent);
-  } /*else if (event->type() == QEvent::Resize) {
-    QSize newSize = static_cast<QResizeEvent*>(event)->size();
-    mUI.openGLWidget->resizeGL(newSize.width(), newSize.height());
-  }*/
-  return true;
-}
+
 }  // namespace nimagna

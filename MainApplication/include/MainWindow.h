@@ -25,10 +25,7 @@ class MainWindow : public QMainWindow {
 
   virtual ~MainWindow();
 
- protected:
-  bool event(QEvent* event) override;
  private slots:
-
   // --- Menu actions  ---
   // File menu
   void on_actionLoad_triggered();

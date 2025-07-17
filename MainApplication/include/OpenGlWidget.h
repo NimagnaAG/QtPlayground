@@ -3,9 +3,10 @@
 #include <QtOpenGL/QOpenGLFunctions_4_0_Core>
 #include <QtOpenGLWidgets/QOpenGLWidget>
 
+#include "Rendering/GsRenderObject.h"
 #include "Rendering/Renderer.h"
 #include "Rendering/TextureRenderObject.h"
-#include "Rendering/GsRenderObject.h"
+
 namespace nimagna {
 
 class RenderObjectManager;
@@ -23,10 +24,11 @@ class OpenGlWidget : public QOpenGLWidget, protected QOpenGLFunctions_4_0_Core {
 
   // set the RenderObjectManager
   void setRenderer(std::shared_ptr<Renderer> renderer);
-  void enableTrackball(bool enabled); 
+  void enableTrackball(bool enabled);
  signals:
   void initialized();
-   
+
+ protected:
   // initialize
   void initializeGL() override;
   // paint
@@ -52,8 +54,6 @@ class OpenGlWidget : public QOpenGLWidget, protected QOpenGLFunctions_4_0_Core {
 
   // the texture render object to render the geometry
   std::unique_ptr<TextureRenderObject> mTextureRenderObject;
-
-
 
   bool mTrackballEnabled = true;
   bool mLeftButtonDown = false;
