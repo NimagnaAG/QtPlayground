@@ -70,7 +70,9 @@ class RENDERING_API RenderObject : public QObject {
     updateModelMatrix();
     emit propertiesChanged();
   }
-
+  const float& fovY() const { return mFovY; }
+  void setFovY(float fovY) { mFovY = fovY;
+  }
   // check if initialized
   bool isInitialized() const;
   bool readyForRendering() const { return mIsReadyForRendering; }
@@ -87,6 +89,7 @@ class RENDERING_API RenderObject : public QObject {
  private:
   QVector3D mPosition = {0.0f, 0.0f, 0.0f};
   QVector3D mRotation = {0.0f, 0.0f, 0.0f};
+  float mFovY = 90.0f;  // default vertical field of view in degrees
   float mScale = 1.0f;
   // the object's own model matrix defines the position, rotation, and scale of the object in the
   // world coordinate system.

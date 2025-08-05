@@ -74,7 +74,12 @@ class RENDERING_API RenderObjectManager final : public QObject {
 
   // method to add a render object of a specific type. See also specific methods below
   void addObject(RenderObjectType type, const QString& filename);
-
+  void UpdateObjectFov(float fov) {
+    for (const auto& renderObject : mRenderObjectsList) {
+      // let the object draw itself by passing the camera view and projection matrices
+      renderObject->setFovY(fov);
+    }
+  }
   // the render objects
   RenderObjectList& renderObjects();
   // removes and deletes all render objects

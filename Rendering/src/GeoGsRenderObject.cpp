@@ -29,7 +29,7 @@ void GeoGsRenderObject::initialize() {
   initializeOpenGLFunctions();
 
   // set initial scale to 0.1f
-  setScale(0.1f);
+  //setScale(0.1f);
 
   // load file
   QString fileExtension = mGsLocation.split(".").last();
@@ -43,6 +43,8 @@ void GeoGsRenderObject::initialize() {
     SPDLOG_ERROR("file extension wrong:{} ", fileExtension.toStdString());
     LoadSplatGs(mGsLocation);
   }
+  // Build and compile the shader program, get the variable locations
+  setupShaderProgram();
   // create vertex buffer object
   mVBO = QOpenGLBuffer(QOpenGLBuffer::VertexBuffer);
   if (!mVBO.create()) {
@@ -78,10 +80,8 @@ void GeoGsRenderObject::initialize() {
   if (!mIBO.create()) {
     SPDLOG_ERROR("Failed to create IndexBufferObject");
   }
-  mIBO.setUsagePattern(QOpenGLBuffer::StaticDraw);
+  mIBO.setUsagePattern(QOpenGLBuffer::DynamicDraw);
 
-  // Build and compile the shader program, get the variable locations
-  setupShaderProgram();
 
   int stride = sizeof(VertexData);
   mShaderProgram->enableAttributeArray(0);
@@ -149,12 +149,20 @@ void GeoGsRenderObject::setupShaderProgram() {
   m_uViewLoc = mShaderProgram->uniformLocation("uView");
   m_uProjLoc = mShaderProgram->uniformLocation("uProj");
 
-  // Note: Assuming focal length to be fixed. Is 1500x1500 a good value??????
-  auto focalPosition = mShaderProgram->uniformLocation("uFocal");
-  mShaderProgram->setUniformValue(focalPosition, QVector2D(1500, 1500));
+
   // Attention: viewport is fixed to 1080x720!
-  const auto viewportLocation = mShaderProgram->uniformLocation("uViewport");
-  mShaderProgram->setUniformValue(viewportLocation, QVector2D(1080, 720));
+  viewportLocation = mShaderProgram->uniformLocation("uViewport"); 
+    QSize viewportSize = QOpenGLContext::currentContext()->surface()->size();
+    mShaderProgram->setUniformValue(viewportLocation, QVector2D(viewportSize.width(), viewportSize.height()));
+    SPDLOG_INFO("in setupShaderProgram viewportSize.width(), viewportSize.height()", viewportSize.width(), viewportSize.height());
+    // Note: Assuming focal length to be fixed. Is 1500x1500 a good value?????? ANSWER BY JAMES: NOT
+    // GOOD VALUE, need to get focal length from camera
+   focalPosition = mShaderProgram->uniformLocation("uFocal"); 
+   auto [fx, fy] = calculateFocalLengths(fovY(), viewportSize.width(), viewportSize.height()); 
+     QVector2D focalValue(fx, fy); 
+   mShaderProgram->setUniformValue(focalPosition, focalValue);
+  //glEnable(GL_BLEND);
+
 }
 
 void GeoGsRenderObject::draw(const QMatrix4x4& viewMatrix, const QMatrix4x4& projectionMatrix) {
@@ -163,22 +171,110 @@ void GeoGsRenderObject::draw(const QMatrix4x4& viewMatrix, const QMatrix4x4& pro
     return;
   }
 
+  glClear(GL_COLOR_BUFFER_BIT);
+  glEnable(GL_BLEND); 
+  glBlendFunc(GL_ONE_MINUS_DST_ALPHA, GL_ONE);
   // sort by depth depending on the view projection matrix
-  sortSplatsAndUpdateIndexBufferObject(viewMatrix * projectionMatrix);
+  mViewMatrix = viewMatrix;
+  mShaderProgram->bind();
+  QSize viewportSize = QOpenGLContext::currentContext()->surface()->size();
+  resizeGL(viewportSize.width(), viewportSize.height());
+   
+//QMatrix4x4 gsprojectionMatrix = getProjectionMatrix(focalValue.x(), focalValue.y(),  viewportSize.width(), viewportSize.height());
+  //sortSplatsAndUpdateIndexBufferObject(viewMatrix * gsprojectionMatrix);
 
   // bind shader and update the view/projection matrices
-  mShaderProgram->bind();
-  mShaderProgram->setUniformValue(m_uViewLoc, viewMatrix);
-  mShaderProgram->setUniformValue(m_uProjLoc, projectionMatrix);
+
+ // mShaderProgram->setUniformValue(m_uViewLoc, viewMatrix);
+ // mShaderProgram->setUniformValue(m_uProjLoc, gsprojectionMatrix);
+
+
+  //mShaderProgram->setUniformValue(viewportLocation,  QVector2D(viewportSize.width(), viewportSize.height()));
+  
+  mVAO.bind();
+  mIBO.bind();
+  glDrawElements(GL_POINTS, int(mSplatData.positions.size()), GL_UNSIGNED_INT, 0);
+  //mVAO.release();
+ // mShaderProgram->release();
+}
+ 
+void GeoGsRenderObject::RunSort(const QMatrix4x4& viewProj) {
+  /* const float* f_buffer = reinterpret_cast<const float*>(buffer.constData());
+  // Assume viewProj and lastProj are QMatrix4x4, and Positions is a QVector<float> (flat array)
+  if (viewProj == QMatrix4x4() || viewProj == lastProj) {
+    return;  // QMatrix4x4() is the identity
+  } 
+QVector3D TranslationA = viewProj.column(3).toVector3D();
+QVector3D TranslationB = lastProj.column(3).toVector3D();
+float Dist = (TranslationA - TranslationB).length();
+
+float dot = lastProj.column(2).z() * viewProj.column(2).z() +
+            lastProj.column(1).z() * viewProj.column(1).z() +
+            lastProj.column(0).z() * viewProj.column(0).z();
+if (std::abs(dot - 1.0f) < 0.01f || Dist < 0.015f) {
+    SPDLOG_INFO("Dist:{} < 0.015f ; dot:{} < 0.01f ", Dist, dot);
+    return;
+} 
+  float maxDepth = -std::numeric_limits<float>::infinity();
+  float minDepth = std::numeric_limits<float>::infinity();
+  QVector<int> SizeList(vertexCount);
+  for (int i = 0; i < vertexCount; i++) { 
+    float depth = (viewProj(2, 0) * f_buffer[8 * i + 0] +  // viewProj[2]
+                   viewProj(2, 1) * f_buffer[8 * i + 1] +  // viewProj[6]
+                   viewProj(2, 2) * f_buffer[8 * i + 2]) *
+                  4096.0f;  // viewProj[10]
+    SizeList[i] = static_cast<int>(depth);
+    if (depth > maxDepth) maxDepth = depth;
+    if (depth < minDepth) minDepth = depth;
+    if (i < 10) SPDLOG_INFO("depth {} {} ", i, depth);
+  }
+
+  float depthInv = (65535.0f) / (maxDepth - minDepth);
+  int ArrayMax = 65536;
+  QVector<uint32_t> Counts0(65536, 0);
+
+  for (int i = 0; i < vertexCount; i++) {
+    SizeList[i] = static_cast<int>((SizeList[i] - minDepth) * depthInv);
+    Counts0[SizeList[i]]++;
+  }
+
+  QVector<uint32_t> Starts0(ArrayMax, 0);
+  for (int i = 1; i < ArrayMax; i++) Starts0[i] = Starts0[i - 1] + Counts0[i - 1];
+
+  QByteArray depthIndexData(vertexCount * sizeof(quint32), 0);
+  quint32* depthIndex = reinterpret_cast<quint32*>(depthIndexData.data());
+  // QVector<uint32_t> depthIndex(vertexCount, 0);
+  for (int i = 0; i < vertexCount; i++) {
+    depthIndex[Starts0[SizeList[i]]++] = i;
+  }
+
+  lastProj = viewProj;
+  if (!mIBO.isCreated()) {
+    mIBO = QOpenGLBuffer(QOpenGLBuffer::IndexBuffer);
+    if (!mIBO.create()) {
+      SPDLOG_ERROR("Failed to create index buffer");
+      return;
+    }
+    mIBO.setUsagePattern(QOpenGLBuffer::DynamicDraw);
+  }
 
   mVAO.bind();
-  glDrawElements(GL_POINTS, int(mSplatData.positions.size()), GL_UNSIGNED_INT, 0);
-  mVAO.release();
-  mShaderProgram->release();
-}
-
+  mIBO.bind();
+  mIBO.allocate(depthIndexData.constData(), depthIndexData.size() * sizeof(uint32_t));   
+  */
+} 
 void GeoGsRenderObject::sortSplatsAndUpdateIndexBufferObject(const QMatrix4x4& viewProj) {
   // temporary index array for sorting
+  QVector3D TranslationA = viewProj.column(3).toVector3D();
+  QVector3D TranslationB = lastProj.column(3).toVector3D();
+  float Dist = (TranslationA - TranslationB).length();
+
+  float dot = lastProj.column(2).z() * viewProj.column(2).z() +
+              lastProj.column(1).z() * viewProj.column(1).z() +
+              lastProj.column(0).z() * viewProj.column(0).z();
+  if (std::abs(dot - 1.0f) < 0.01f || Dist < 0.01f) { 
+    return;
+  }
   std::vector<uint32_t> indices(mSplatData.positions.size());
   std::iota(indices.begin(), indices.end(), 0);
 
@@ -193,9 +289,25 @@ void GeoGsRenderObject::sortSplatsAndUpdateIndexBufferObject(const QMatrix4x4& v
               [](const auto& a, const auto& b) { return a.first < b.first; });
     for (size_t i = 0; i < indices.size(); ++i) indices[i] = depthIndex[i].second;
   }
+  lastProj = viewProj;
   // update indices
   mIBO.bind();
+  mIBO.setUsagePattern(QOpenGLBuffer::DynamicDraw);
   mIBO.allocate(indices.data(), int(indices.size() * sizeof(uint32_t)));
+
+  // Save indices to txt file
+  /* QFile outFile("indices.txt");
+  if (outFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+    QTextStream out(&outFile);
+    for (const auto& idx : indices) {
+      out << idx << "\n";
+    }
+    outFile.close();
+  } else {
+    SPDLOG_ERROR("Failed to open indices.txt for writing.");
+  }*/
+
+  SPDLOG_INFO("Dist:{} < 0.015f ; dot:{} < 0.01f ", Dist, dot);
 }
 
 GeoGsRenderObject::~GeoGsRenderObject() {
@@ -215,7 +327,7 @@ nimagna::GeoGsRenderObject::SplatData GeoGsRenderObject::loadSplatFile(const QSt
   }
   QByteArray data = file.readAll();
   const auto rowLength = 32;  // 3 (position) + 3 (scale) + 4 (color) + 4 (quaternion)
-  const auto vertexCount = data.size() / rowLength;
+  vertexCount = data.size() / rowLength;
   const uint8_t* raw = reinterpret_cast<const uint8_t*>(data.constData());
 
   for (int i = 0; i < vertexCount; ++i) {

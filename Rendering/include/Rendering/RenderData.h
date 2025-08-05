@@ -66,7 +66,10 @@ class RENDERING_API RenderData : public QObject {
     QVector3D lookAtPoint() const { return mLookAtPoint; }
     void setLookAtPoint(QVector3D lookAt) { mLookAtPoint = lookAt; }
     float fieldOfViewAngle() const { return mFieldOfViewAngle; }
-    void setFieldOfViewAngle(float fieldOfViewAngle) { mFieldOfViewAngle = fieldOfViewAngle; }
+    void setFieldOfViewAngle(float fieldOfViewAngle) {
+      mFieldOfViewAngle = fieldOfViewAngle;
+      SPDLOG_INFO("setFieldOfViewAngle {}", mFieldOfViewAngle);
+    }
 
     explicit ShotFraming3D(const QJsonObject& from);
     explicit operator QJsonObject() const;
@@ -75,6 +78,7 @@ class RENDERING_API RenderData : public QObject {
     QVector3D mPosition;
     QVector3D mLookAtPoint;
     float mFieldOfViewAngle;
+
   };
 
   RenderData() = default;
@@ -100,7 +104,12 @@ class RENDERING_API RenderData : public QObject {
 
   QMatrix4x4 viewMatrix() const;
   QMatrix4x4 projectionMatrix() const;
-
+  float focal() const {
+    // Assuming focal length in X is derived from field of view and position.z
+    return  (mShotFraming3D.position().z() / (2.0f * std::tan(0.5f * mShotFraming3D.fieldOfViewAngle() * M_PI / 180.0f)));
+  }
+  float fieldOfViewAngle() { return mShotFraming3D.fieldOfViewAngle();
+  }
  protected:
   ShotFraming2D mShotFraming2D;
   ShotFraming3D mShotFraming3D;

@@ -126,8 +126,7 @@ void OpenGlWidget::resizeGL(int w, int h) {
     mViewPort.setWidth(pixelRatio * width());
     mViewPort.setHeight(pixelRatio * newHeight);
   }
-  SPDLOG_INFO("OpenGlWidget::resizeGL {}, {}, ratio {}", mViewPort.width(), mViewPort.height(),
-              ratio);
+  SPDLOG_INFO("OpenGlWidget::resizeGL {}, {}, ratio {}", mViewPort.width(), mViewPort.height(), ratio);
   QOpenGLWidget::resizeGL(w, h);
 }
 
@@ -245,6 +244,7 @@ void OpenGlWidget::wheelEvent(QWheelEvent* event) {
     if (angle > maxViewAngle) angle = maxViewAngle;
     framing3D.setFieldOfViewAngle(angle);
     renderData->setFraming3D(framing3D);
+    rom->UpdateObjectFov(angle);
     updateRendering();
     event->accept();
   }

@@ -128,7 +128,7 @@ bool RenderObjectManager::render() {
   }
 
   // clear the frame- and depth buffer to render a new frame
-  glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
+  /* glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
   glDepthRange(0.0, 1.0);
   glClearDepth(1.0f);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -139,13 +139,15 @@ bool RenderObjectManager::render() {
   // enable blending for transparency
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
+ */
   // render objects only if there's render data for the projection and the list has more than one
   // object (i.e. storyboard + more) or the storyboard is the only item and has content
   if (mCurrentRenderData && (mRenderObjectsList.size() > 0)) {
     // get camera view and projection matrices
     const QMatrix4x4 projectionMatrix = mCurrentRenderData->projectionMatrix();
     const QMatrix4x4 viewMatrix = mCurrentRenderData->viewMatrix();
+    float fov = mCurrentRenderData->framing3D().fieldOfViewAngle();
+    const float focalLength = mCurrentRenderData->focal();
     for (const auto& renderObject : mRenderObjectsList) {
       // let the object draw itself by passing the camera view and projection matrices
       renderObject->draw(viewMatrix, projectionMatrix);
