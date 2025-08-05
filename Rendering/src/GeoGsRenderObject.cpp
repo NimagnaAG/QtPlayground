@@ -277,8 +277,7 @@ void GeoGsRenderObject::sortSplatsAndUpdateIndexBufferObject(const QMatrix4x4& v
   }
   std::vector<uint32_t> indices(mSplatData.positions.size());
   std::iota(indices.begin(), indices.end(), 0);
-
-  if (!viewProj.isIdentity()) {
+  /* // Original sorting method using std::sort, slow for large datasets
     std::vector<std::pair<float, uint32_t>> depthIndex;
     for (size_t i = 0; i < mSplatData.positions.size(); ++i) {
       QVector4D pos4(mSplatData.positions[i], 1.0f);
@@ -288,7 +287,48 @@ void GeoGsRenderObject::sortSplatsAndUpdateIndexBufferObject(const QMatrix4x4& v
     std::sort(depthIndex.begin(), depthIndex.end(),
               [](const auto& a, const auto& b) { return a.first < b.first; });
     for (size_t i = 0; i < indices.size(); ++i) indices[i] = depthIndex[i].second;
-  }
+  */
+     
+    // Use a radix sort for faster sorting of depth indices
+    std::vector<float> depths(mSplatData.positions.size());
+    for (size_t i = 0; i < mSplatData.positions.size(); ++i) {
+      QVector4D pos4(mSplatData.positions[i], 1.0f);
+      QVector4D cam = viewProj * pos4;
+      depths[i] = cam.z();
+    }
+
+    // Radix sort for 32-bit floats (reinterpret as uint32_t for sorting)
+    std::vector<uint32_t> temp_indices(indices.size());
+    std::vector<uint32_t> temp_buffer(indices.size());
+    constexpr int BITS = 8;
+    constexpr int BUCKETS = 1 << BITS;
+    constexpr int PASSES = (32 + BITS - 1) / BITS;
+
+    // Convert float to sortable uint32_t (handle sign bit)
+    auto floatFlip = [](float f) -> uint32_t {
+      uint32_t x = *reinterpret_cast<uint32_t*>(&f);
+      return x ^ ((x >> 31) ? 0xFFFFFFFF : 0x80000000);
+    };
+
+    for (int pass = 0; pass < PASSES; ++pass) {
+      int shift = pass * BITS;
+      std::array<size_t, BUCKETS> count = {0};
+      for (size_t i = 0; i < indices.size(); ++i) {
+        uint32_t key = (floatFlip(depths[indices[i]]) >> shift) & (BUCKETS - 1);
+        ++count[key];
+      }
+      std::array<size_t, BUCKETS> offset = {0};
+      for (int i = 1; i < BUCKETS; ++i) {
+        offset[i] = offset[i - 1] + count[i - 1];
+      }
+      for (size_t i = 0; i < indices.size(); ++i) {
+        uint32_t key = (floatFlip(depths[indices[i]]) >> shift) & (BUCKETS - 1);
+        temp_indices[offset[key]++] = indices[i];
+      }
+      indices.swap(temp_indices);
+    } 
+
+
   lastProj = viewProj;
   // update indices
   mIBO.bind();
