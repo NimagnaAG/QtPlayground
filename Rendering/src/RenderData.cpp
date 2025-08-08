@@ -100,7 +100,7 @@ QMatrix4x4 RenderData::viewMatrix() const {
   } else {
     // 3D projection
     const auto& framing = framing3D();
-    const QVector3D upVector(0, -1, 0);
+    const QVector3D upVector(0, 1, 0);
     viewMatrix.lookAt(framing.position(), framing.lookAtPoint(), upVector);
   }
   return viewMatrix;

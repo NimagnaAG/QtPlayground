@@ -78,6 +78,7 @@ class RENDERING_API RenderObject : public QObject {
   bool readyForRendering() const { return mIsReadyForRendering; }
   void setLayer(int layer);
   int layer() const;
+  virtual void keyPressEvent(QKeyEvent* event) = 0;
 
  signals:
   void propertiesChanged();

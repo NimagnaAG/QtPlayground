@@ -146,8 +146,7 @@ bool RenderObjectManager::render() {
     // get camera view and projection matrices
     const QMatrix4x4 projectionMatrix = mCurrentRenderData->projectionMatrix();
     const QMatrix4x4 viewMatrix = mCurrentRenderData->viewMatrix();
-    float fov = mCurrentRenderData->framing3D().fieldOfViewAngle();
-    const float focalLength = mCurrentRenderData->focal();
+    float fov = mCurrentRenderData->framing3D().fieldOfViewAngle(); 
     for (const auto& renderObject : mRenderObjectsList) {
       // let the object draw itself by passing the camera view and projection matrices
       renderObject->draw(viewMatrix, projectionMatrix);
@@ -185,6 +184,11 @@ void RenderObjectManager::addObject(RenderObjectType type, const QString& filena
       renderObject = std::make_shared<GeoGsRenderObject>(filename);
       break;
     case nimagna::RenderObjectManager::RenderObjectType::kGeoGs:
+      if (mRenderObjectsList.size() > 0) {
+        mCurrentGsObjPosition = static_cast<int>(mRenderObjectsList.size());
+        delete mRenderObjectsList.at(mCurrentGsObjPosition).get();
+        mRenderObjectsList.erase(mRenderObjectsList.begin() + mCurrentGsObjPosition);
+      }
       renderObject = std::make_shared<GeoGsRenderObject>(filename);
       break;
     case nimagna::RenderObjectManager::RenderObjectType::kPly:

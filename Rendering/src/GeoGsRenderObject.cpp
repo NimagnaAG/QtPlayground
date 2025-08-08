@@ -29,7 +29,7 @@ void GeoGsRenderObject::initialize() {
   initializeOpenGLFunctions();
 
   // set initial scale to 0.1f
-  //setScale(0.1f);
+  // setScale(0.1f);
 
   // load file
   QString fileExtension = mGsLocation.split(".").last();
@@ -81,7 +81,6 @@ void GeoGsRenderObject::initialize() {
     SPDLOG_ERROR("Failed to create IndexBufferObject");
   }
   mIBO.setUsagePattern(QOpenGLBuffer::DynamicDraw);
-
 
   int stride = sizeof(VertexData);
   mShaderProgram->enableAttributeArray(0);
@@ -149,20 +148,24 @@ void GeoGsRenderObject::setupShaderProgram() {
   m_uViewLoc = mShaderProgram->uniformLocation("uView");
   m_uProjLoc = mShaderProgram->uniformLocation("uProj");
 
-
   // Attention: viewport is fixed to 1080x720!
-  viewportLocation = mShaderProgram->uniformLocation("uViewport"); 
-    QSize viewportSize = QOpenGLContext::currentContext()->surface()->size();
-    mShaderProgram->setUniformValue(viewportLocation, QVector2D(viewportSize.width(), viewportSize.height()));
-    SPDLOG_INFO("in setupShaderProgram viewportSize.width(), viewportSize.height()", viewportSize.width(), viewportSize.height());
-    // Note: Assuming focal length to be fixed. Is 1500x1500 a good value?????? ANSWER BY JAMES: NOT
-    // GOOD VALUE, need to get focal length from camera
-   focalPosition = mShaderProgram->uniformLocation("uFocal"); 
-   auto [fx, fy] = calculateFocalLengths(fovY(), viewportSize.width(), viewportSize.height()); 
-     QVector2D focalValue(fx, fy); 
-   mShaderProgram->setUniformValue(focalPosition, focalValue);
-  //glEnable(GL_BLEND);
-
+  viewportLocation = mShaderProgram->uniformLocation("uViewport");
+  QSize viewportSize = QOpenGLContext::currentContext()->surface()->size();
+  mShaderProgram->setUniformValue(viewportLocation,
+                                  QVector2D(viewportSize.width(), viewportSize.height()));
+  SPDLOG_INFO("in setupShaderProgram viewportSize.width(), viewportSize.height()",
+              viewportSize.width(), viewportSize.height());
+  // Note: Assuming focal length to be fixed. Is 1500x1500 a good value?????? ANSWER BY JAMES: NOT
+  // GOOD VALUE, need to get focal length from camera
+  focalPosition = mShaderProgram->uniformLocation("uFocal");
+  auto [fx, fy] = calculateFocalLengths(fovY(), viewportSize.width(), viewportSize.height());
+  QVector2D focalValue(fx, fy);
+  mShaderProgram->setUniformValue(focalPosition, focalValue);
+  mViewMatrix.setToIdentity(); 
+  const QVector3D upVector(1, -1, 0);
+  QVector3D position = QVector3D(1, 0, 0);
+  mViewMatrix.lookAt(position, QVector3D(), upVector); 
+  // glEnable(GL_BLEND);
 }
 
 void GeoGsRenderObject::draw(const QMatrix4x4& viewMatrix, const QMatrix4x4& projectionMatrix) {
@@ -172,53 +175,57 @@ void GeoGsRenderObject::draw(const QMatrix4x4& viewMatrix, const QMatrix4x4& pro
   }
 
   glClear(GL_COLOR_BUFFER_BIT);
-  glEnable(GL_BLEND); 
+  glEnable(GL_BLEND);
   glBlendFunc(GL_ONE_MINUS_DST_ALPHA, GL_ONE);
   // sort by depth depending on the view projection matrix
-  mViewMatrix = viewMatrix;
+  /*if (!isControlPressed) {
+      mViewMatrix = viewMatrix;
+  }*/
+
   mShaderProgram->bind();
   QSize viewportSize = QOpenGLContext::currentContext()->surface()->size();
   resizeGL(viewportSize.width(), viewportSize.height());
-   
-//QMatrix4x4 gsprojectionMatrix = getProjectionMatrix(focalValue.x(), focalValue.y(),  viewportSize.width(), viewportSize.height());
-  //sortSplatsAndUpdateIndexBufferObject(viewMatrix * gsprojectionMatrix);
+
+  // QMatrix4x4 gsprojectionMatrix = getProjectionMatrix(focalValue.x(), focalValue.y(),
+  // viewportSize.width(), viewportSize.height()); sortSplatsAndUpdateIndexBufferObject(viewMatrix *
+  // gsprojectionMatrix);
 
   // bind shader and update the view/projection matrices
 
- // mShaderProgram->setUniformValue(m_uViewLoc, viewMatrix);
- // mShaderProgram->setUniformValue(m_uProjLoc, gsprojectionMatrix);
+  // mShaderProgram->setUniformValue(m_uViewLoc, viewMatrix);
+  // mShaderProgram->setUniformValue(m_uProjLoc, gsprojectionMatrix);
 
+  // mShaderProgram->setUniformValue(viewportLocation,  QVector2D(viewportSize.width(),
+  // viewportSize.height()));
 
-  //mShaderProgram->setUniformValue(viewportLocation,  QVector2D(viewportSize.width(), viewportSize.height()));
-  
   mVAO.bind();
   mIBO.bind();
   glDrawElements(GL_POINTS, int(mSplatData.positions.size()), GL_UNSIGNED_INT, 0);
-  //mVAO.release();
- // mShaderProgram->release();
+  // mVAO.release();
+  // mShaderProgram->release();
 }
- 
+
 void GeoGsRenderObject::RunSort(const QMatrix4x4& viewProj) {
-  /* const float* f_buffer = reinterpret_cast<const float*>(buffer.constData());
+  const float* f_buffer = reinterpret_cast<const float*>(data.constData());
   // Assume viewProj and lastProj are QMatrix4x4, and Positions is a QVector<float> (flat array)
   if (viewProj == QMatrix4x4() || viewProj == lastProj) {
     return;  // QMatrix4x4() is the identity
-  } 
-QVector3D TranslationA = viewProj.column(3).toVector3D();
-QVector3D TranslationB = lastProj.column(3).toVector3D();
-float Dist = (TranslationA - TranslationB).length();
+  }
+  //QVector3D TranslationA = viewProj.column(3).toVector3D();
+  //QVector3D TranslationB = lastProj.column(3).toVector3D();
+  //float Dist = (TranslationA - TranslationB).length();
 
-float dot = lastProj.column(2).z() * viewProj.column(2).z() +
-            lastProj.column(1).z() * viewProj.column(1).z() +
-            lastProj.column(0).z() * viewProj.column(0).z();
-if (std::abs(dot - 1.0f) < 0.01f || Dist < 0.015f) {
-    SPDLOG_INFO("Dist:{} < 0.015f ; dot:{} < 0.01f ", Dist, dot);
-    return;
-} 
+  //float dot = lastProj.column(2).z() * viewProj.column(2).z() +
+  //            lastProj.column(1).z() * viewProj.column(1).z() +
+  //            lastProj.column(0).z() * viewProj.column(0).z();
+  //if (std::abs(dot - 1.0f) < 0.01f || Dist < 0.015f) {
+  //  SPDLOG_INFO("Dist:{} < 0.015f ; dot:{} < 0.01f ", Dist, dot);
+  //  return;
+  //}
   float maxDepth = -std::numeric_limits<float>::infinity();
   float minDepth = std::numeric_limits<float>::infinity();
   QVector<int> SizeList(vertexCount);
-  for (int i = 0; i < vertexCount; i++) { 
+  for (int i = 0; i < vertexCount; i++) {
     float depth = (viewProj(2, 0) * f_buffer[8 * i + 0] +  // viewProj[2]
                    viewProj(2, 1) * f_buffer[8 * i + 1] +  // viewProj[6]
                    viewProj(2, 2) * f_buffer[8 * i + 2]) *
@@ -247,7 +254,8 @@ if (std::abs(dot - 1.0f) < 0.01f || Dist < 0.015f) {
   for (int i = 0; i < vertexCount; i++) {
     depthIndex[Starts0[SizeList[i]]++] = i;
   }
-
+  std::vector<uint32_t> indices(mSplatData.positions.size());
+   
   lastProj = viewProj;
   if (!mIBO.isCreated()) {
     mIBO = QOpenGLBuffer(QOpenGLBuffer::IndexBuffer);
@@ -259,22 +267,22 @@ if (std::abs(dot - 1.0f) < 0.01f || Dist < 0.015f) {
   }
 
   mVAO.bind();
-  mIBO.bind();
-  mIBO.allocate(depthIndexData.constData(), depthIndexData.size() * sizeof(uint32_t));   
-  */
-} 
+  mIBO.bind(); 
+  mIBO.allocate(depthIndexData.constData(), int(depthIndexData.size() ));
+  isControlPressed = false;
+}
 void GeoGsRenderObject::sortSplatsAndUpdateIndexBufferObject(const QMatrix4x4& viewProj) {
   // temporary index array for sorting
-  QVector3D TranslationA = viewProj.column(3).toVector3D();
+ /* QVector3D TranslationA = viewProj.column(3).toVector3D();
   QVector3D TranslationB = lastProj.column(3).toVector3D();
   float Dist = (TranslationA - TranslationB).length();
 
   float dot = lastProj.column(2).z() * viewProj.column(2).z() +
               lastProj.column(1).z() * viewProj.column(1).z() +
               lastProj.column(0).z() * viewProj.column(0).z();
-  if (std::abs(dot - 1.0f) < 0.01f || Dist < 0.01f) { 
+  if (std::abs(dot - 1.0f) < 0.01f || Dist < 0.01f) {
     return;
-  }
+  }*/
   std::vector<uint32_t> indices(mSplatData.positions.size());
   std::iota(indices.begin(), indices.end(), 0);
   /* // Original sorting method using std::sort, slow for large datasets
@@ -288,66 +296,53 @@ void GeoGsRenderObject::sortSplatsAndUpdateIndexBufferObject(const QMatrix4x4& v
               [](const auto& a, const auto& b) { return a.first < b.first; });
     for (size_t i = 0; i < indices.size(); ++i) indices[i] = depthIndex[i].second;
   */
-     
-    // Use a radix sort for faster sorting of depth indices
-    std::vector<float> depths(mSplatData.positions.size());
-    for (size_t i = 0; i < mSplatData.positions.size(); ++i) {
-      QVector4D pos4(mSplatData.positions[i], 1.0f);
-      QVector4D cam = viewProj * pos4;
-      depths[i] = cam.z();
+
+  // Use a radix sort for faster sorting of depth indices
+  std::vector<float> depths(mSplatData.positions.size());
+  for (size_t i = 0; i < mSplatData.positions.size(); ++i) {
+    QVector4D pos4(mSplatData.positions[i], 1.0f);
+    QVector4D cam = viewProj * pos4;
+    depths[i] = cam.z();
+  }
+
+  // Radix sort for 32-bit floats (reinterpret as uint32_t for sorting)
+  std::vector<uint32_t> temp_indices(indices.size());
+  std::vector<uint32_t> temp_buffer(indices.size());
+  constexpr int BITS = 8;
+  constexpr int BUCKETS = 1 << BITS;
+  constexpr int PASSES = (32 + BITS - 1) / BITS;
+
+  // Convert float to sortable uint32_t (handle sign bit)
+  auto floatFlip = [](float f) -> uint32_t {
+    uint32_t x = *reinterpret_cast<uint32_t*>(&f);
+    return x ^ ((x >> 31) ? 0xFFFFFFFF : 0x80000000);
+  };
+
+  for (int pass = 0; pass < PASSES; ++pass) {
+    int shift = pass * BITS;
+    std::array<size_t, BUCKETS> count = {0};
+    for (size_t i = 0; i < indices.size(); ++i) {
+      uint32_t key = (floatFlip(depths[indices[i]]) >> shift) & (BUCKETS - 1);
+      ++count[key];
     }
-
-    // Radix sort for 32-bit floats (reinterpret as uint32_t for sorting)
-    std::vector<uint32_t> temp_indices(indices.size());
-    std::vector<uint32_t> temp_buffer(indices.size());
-    constexpr int BITS = 8;
-    constexpr int BUCKETS = 1 << BITS;
-    constexpr int PASSES = (32 + BITS - 1) / BITS;
-
-    // Convert float to sortable uint32_t (handle sign bit)
-    auto floatFlip = [](float f) -> uint32_t {
-      uint32_t x = *reinterpret_cast<uint32_t*>(&f);
-      return x ^ ((x >> 31) ? 0xFFFFFFFF : 0x80000000);
-    };
-
-    for (int pass = 0; pass < PASSES; ++pass) {
-      int shift = pass * BITS;
-      std::array<size_t, BUCKETS> count = {0};
-      for (size_t i = 0; i < indices.size(); ++i) {
-        uint32_t key = (floatFlip(depths[indices[i]]) >> shift) & (BUCKETS - 1);
-        ++count[key];
-      }
-      std::array<size_t, BUCKETS> offset = {0};
-      for (int i = 1; i < BUCKETS; ++i) {
-        offset[i] = offset[i - 1] + count[i - 1];
-      }
-      for (size_t i = 0; i < indices.size(); ++i) {
-        uint32_t key = (floatFlip(depths[indices[i]]) >> shift) & (BUCKETS - 1);
-        temp_indices[offset[key]++] = indices[i];
-      }
-      indices.swap(temp_indices);
-    } 
-
+    std::array<size_t, BUCKETS> offset = {0};
+    for (int i = 1; i < BUCKETS; ++i) {
+      offset[i] = offset[i - 1] + count[i - 1];
+    }
+    for (size_t i = 0; i < indices.size(); ++i) {
+      uint32_t key = (floatFlip(depths[indices[i]]) >> shift) & (BUCKETS - 1);
+      temp_indices[offset[key]++] = indices[i];
+    }
+    indices.swap(temp_indices);
+  }
 
   lastProj = viewProj;
   // update indices
   mIBO.bind();
   mIBO.setUsagePattern(QOpenGLBuffer::DynamicDraw);
   mIBO.allocate(indices.data(), int(indices.size() * sizeof(uint32_t)));
-
-  // Save indices to txt file
-  /* QFile outFile("indices.txt");
-  if (outFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
-    QTextStream out(&outFile);
-    for (const auto& idx : indices) {
-      out << idx << "\n";
-    }
-    outFile.close();
-  } else {
-    SPDLOG_ERROR("Failed to open indices.txt for writing.");
-  }*/
-
-  SPDLOG_INFO("Dist:{} < 0.015f ; dot:{} < 0.01f ", Dist, dot);
+  isControlPressed = false;
+  //SPDLOG_INFO("Dist:{} < 0.015f ; dot:{} < 0.01f ", Dist, dot);
 }
 
 GeoGsRenderObject::~GeoGsRenderObject() {
@@ -365,7 +360,7 @@ nimagna::GeoGsRenderObject::SplatData GeoGsRenderObject::loadSplatFile(const QSt
     // Handle error as appropriate
     return result;
   }
-  QByteArray data = file.readAll();
+  data = file.readAll();
   const auto rowLength = 32;  // 3 (position) + 3 (scale) + 4 (color) + 4 (quaternion)
   vertexCount = data.size() / rowLength;
   const uint8_t* raw = reinterpret_cast<const uint8_t*>(data.constData());
@@ -402,6 +397,19 @@ nimagna::GeoGsRenderObject::SplatData GeoGsRenderObject::loadSplatFile(const QSt
     result.rotations.emplace_back(qx, qy, qz, qw);
   }
   return result;
+}
+QMatrix4x4  GeoGsRenderObject::rotate4(const QMatrix4x4& a, float rad, float x, float y, float z) {
+  QMatrix4x4 rotationMatrix;
+  rotationMatrix.setToIdentity();
+
+  // Normalize the rotation axis
+  QVector3D axis(x, y, z);
+  axis.normalize();
+
+  // Apply rotation around the normalized axis
+  rotationMatrix.rotate(rad * 180.0f / M_PI, axis);  // Convert radians to degrees
+
+  return a * rotationMatrix;
 }
 
 }  // namespace nimagna

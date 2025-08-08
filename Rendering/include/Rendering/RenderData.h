@@ -103,11 +103,7 @@ class RENDERING_API RenderData : public QObject {
   void setFraming3D(const ShotFraming3D& framing3D);
 
   QMatrix4x4 viewMatrix() const;
-  QMatrix4x4 projectionMatrix() const;
-  float focal() const {
-    // Assuming focal length in X is derived from field of view and position.z
-    return  (mShotFraming3D.position().z() / (2.0f * std::tan(0.5f * mShotFraming3D.fieldOfViewAngle() * M_PI / 180.0f)));
-  }
+  QMatrix4x4 projectionMatrix() const; 
   float fieldOfViewAngle() { return mShotFraming3D.fieldOfViewAngle();
   }
  protected:

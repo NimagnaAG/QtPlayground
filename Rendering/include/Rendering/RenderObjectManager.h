@@ -89,6 +89,8 @@ class RENDERING_API RenderObjectManager final : public QObject {
   bool isActiveRenderObject(const std::shared_ptr<RenderObject> renderObject) const;
   // debugging
   void changeOpenGlDebugging(bool enabled);
+  // the ordered list of all render objects
+  RenderObjectList mRenderObjectsList;
 
  signals:
   void beginInsertRows(int first, int last);
@@ -135,11 +137,12 @@ class RENDERING_API RenderObjectManager final : public QObject {
   std::unique_ptr<QOpenGLFramebufferObject> mMultisampleFramebuffer;
   QSize mCurrentOutputResolution = {};
 
-  // the ordered list of all render objects
-  RenderObjectList mRenderObjectsList;
 
   // the core application
   std::shared_ptr<RenderData> mCurrentRenderData;
+
+
+  int mCurrentGsObjPosition = 0;
 };
 
 }  // namespace nimagna

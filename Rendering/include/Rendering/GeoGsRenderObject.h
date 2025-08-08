@@ -86,6 +86,7 @@ class RENDERING_API GeoGsRenderObject : public RenderObject, protected QOpenGLFu
   int m_uViewLoc, m_uProjLoc;
   int viewportLocation, focalPosition;
   QMatrix4x4 lastProj, mViewMatrix;
+
   // initialize the shader program
   void setupShaderProgram();
   // the Vertex Array Object holds all vertex relevant data
@@ -95,6 +96,9 @@ class RENDERING_API GeoGsRenderObject : public RenderObject, protected QOpenGLFu
   // the index buffer with the vertex indices for each triangle
   QOpenGLBuffer mIBO;
   int vertexCount = 0; 
+  QMatrix4x4 rotate4(const QMatrix4x4& a, float rad, float x, float y, float z);
+  QByteArray data;
+  bool isControlPressed = true;
   QMatrix4x4 getProjectionMatrix(float fx, float fy, int width, int height) {
     const float znear = 0.2f;
     const float zfar = 200.0f;
@@ -117,20 +121,61 @@ class RENDERING_API GeoGsRenderObject : public RenderObject, protected QOpenGLFu
     return qMakePair(fx, fy);
   }
   void resizeGL(int w, int h ) {  
+     QSize viewportSize = QOpenGLContext::currentContext()->surface()->size();
+     mShaderProgram->setUniformValue(viewportLocation, QVector2D(viewportSize.width(), viewportSize.height()));
+
      mShaderProgram->bind();
-     auto [fx, fy] = calculateFocalLengths(fovY(), static_cast<float>(w), static_cast<float>(h)); 
+     auto [fx, fy] = calculateFocalLengths(fovY(), static_cast<float>(viewportSize.width()), static_cast<float>(viewportSize.height())); 
      QVector2D focalValue(fx, fy); 
      mShaderProgram->setUniformValue(focalPosition, focalValue);  
      QMatrix4x4 gsprojectionMatrix = getProjectionMatrix(fx, fy, w, h);
 
      mShaderProgram->setUniformValue(m_uProjLoc, gsprojectionMatrix);
-     QSize viewportSize = QOpenGLContext::currentContext()->surface()->size();
-     mShaderProgram->setUniformValue(viewportLocation,  QVector2D(viewportSize.width(), viewportSize.height()));
-
+  
      mShaderProgram->setUniformValue(m_uViewLoc, mViewMatrix);
-     sortSplatsAndUpdateIndexBufferObject(mViewMatrix * gsprojectionMatrix);
-     SPDLOG_INFO("OpenGlWidget::resizeGL {}, {}, viewportSize {}, {}, focal {}, {}", w, h, viewportSize.width(), viewportSize.height(), fx, fy);
+     if (isControlPressed) RunSort(mViewMatrix * gsprojectionMatrix);
+     SPDLOG_INFO("GeoGsRenderObject::resizeGL {}, {}, viewportSize {}, {}, focal {}, {}", w, h, viewportSize.width(), viewportSize.height(), fx, fy);
    }
+
+  virtual void keyPressEvent(QKeyEvent* event) override { 
+      QString keyText = event->text();
+      isControlPressed = true;
+      QMatrix4x4 inv = mViewMatrix.inverted();
+      if (event->key() == Qt::Key_W) {
+        
+        inv.translate(0, 0, 0.05f);
+
+      } 
+      if (event->key() == Qt::Key_S) {
+        
+        inv.translate(0, 0, -0.05f);
+      }
+      if (event->key() == Qt::Key_A) { 
+        inv.translate(-0.05f, 0, 0);
+      }
+      if (event->key() == Qt::Key_D) { 
+        inv.translate(0.05f, 0, 0);
+      }
+      if (event->key() == Qt::Key_Q) { 
+        inv = rotate4(inv, -0.05f, 1, 0, 0);
+      }
+      if (event->key() == Qt::Key_E) { 
+        inv = rotate4(inv, 0.05f, 1, 0, 0);
+      }
+      if (event->key() == Qt::Key_Up) { 
+        inv = rotate4(inv, -0.05f, 1, 0, 0);
+      } else if (event->key() == Qt::Key_Down) { 
+        inv = rotate4(inv, 0.05f, 1, 0, 0);
+      } else if (event->key() == Qt::Key_Left) { 
+        inv = rotate4(inv, -0.05f, 0, 1, 0);
+      } else if (event->key() == Qt::Key_Right) { 
+        inv = rotate4(inv, 0.05f, 0, 1, 0);
+      } 
+      if (isControlPressed)
+       mViewMatrix = inv.inverted();
+    
+    SPDLOG_INFO("OpenGlWidget::resizeGL {}", keyText);
+  };
 };
 
 }  // namespace nimagna

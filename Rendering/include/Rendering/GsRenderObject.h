@@ -55,6 +55,7 @@ class RENDERING_API GsRenderObject : public RenderObject, protected QOpenGLFunct
   virtual void initialize() override;
   // draws the render object.
   virtual void draw(const QMatrix4x4& viewMatrix, const QMatrix4x4& projectionMatrix) override;
+  virtual void keyPressEvent(QKeyEvent* event) override {};
 
  private:
   std::vector<unsigned char> readFromFile(const std::filesystem::path& path);
@@ -93,24 +94,11 @@ class RENDERING_API GsRenderObject : public RenderObject, protected QOpenGLFunct
 
  protected:
   std::array<float, 16> getProjectionMatrix(float fx, float fy, int width, int height) {
-    constexpr float znear = 0.2f;
-    constexpr float zfar = 200;
-    return {(2.0f * fx) / width,
-            0.f,
-            0.f,
-            0.f,
-            0.f,
-            -(2 * fy) / height,
-            0.f,
-            0.f,
-            0.f,
-            0.f,
-            zfar / (zfar - znear),
-            1.f,
-            0.f,
-            0.f,
-            -(zfar * znear) / (zfar - znear),
-            0.f};
+    constexpr float znear = 0.2f; constexpr float zfar = 200;
+    return {(2.0f * fx) / width, 0.f, 0.f, 0.f, 
+             0.f,  -(2 * fy) / height, 0.f,  0.f, 
+             0.f,  0.f, zfar / (zfar - znear), 1.f,
+            0.f,  0.f,  -(zfar * znear) / (zfar - znear),  0.f};
   }
 
   int floatToHalf(float val);
@@ -151,6 +139,7 @@ class RENDERING_API GsRenderObject : public RenderObject, protected QOpenGLFunct
   void setTextureData(const std::vector<unsigned int>& texdata, int texwidth, int texheight);
 
   void setDepthIndex(const std::vector<unsigned int>& depthIndex);
+
 };
 
 }  // namespace nimagna

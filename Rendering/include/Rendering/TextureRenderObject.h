@@ -92,7 +92,7 @@ class RENDERING_API TextureRenderObject : public RenderObject, protected QOpenGL
   // set the position of a particular vertex. does not upload the data to the GPU -> call
   // uploadVertexData after changing the vertex data
   void setVertexPosition(int vertexId, int index, float value);
-
+  virtual void keyPressEvent(QKeyEvent* event) override {};
  protected:
   // the vertex shader code
   static const inline QString mVertexShaderFile = ":/resources/shaders/texture.vert";

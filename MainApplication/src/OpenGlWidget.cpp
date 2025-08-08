@@ -160,6 +160,10 @@ void OpenGlWidget::keyPressEvent(QKeyEvent* event) {
     rom->currentRenderData()->setFraming3D(framing3D);
     updateRendering();
   }
+    SPDLOG_INFO("Gs keyPressEvent");
+  for (const auto& obj : mRenderer->renderObjectManager()->mRenderObjectsList) {
+      obj->keyPressEvent(event);  // or any method on RenderObject
+    }
 }
 
 void OpenGlWidget::keyReleaseEvent(QKeyEvent* event) {
