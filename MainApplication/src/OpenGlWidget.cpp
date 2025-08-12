@@ -1,4 +1,4 @@
-#include "pch.h"
+ #include "pch.h"
 
 #include "OpenGlWidget.h"
 
@@ -63,7 +63,7 @@ void OpenGlWidget::initializeGL() {
   auto outputResolution = QSize(1080, 720);
   mTextureRenderObject->changeTextureSizeAndFormat(outputResolution,
                                                    mTextureRenderObject->sourcePixelFormat());
-  mTextureRenderObject->setFlipVertically(true);
+  mTextureRenderObject->setFlipVertically(false);
   mTextureRenderObject->useExternalTexture(true);
   mTextureRenderObject->setFlipHorizontally(false);
 
@@ -128,6 +128,8 @@ void OpenGlWidget::resizeGL(int w, int h) {
   }
   SPDLOG_INFO("OpenGlWidget::resizeGL {}, {}, ratio {}", mViewPort.width(), mViewPort.height(), ratio);
   QOpenGLWidget::resizeGL(w, h);
+  // handle resolution change in the texture render object
+  handleResolutionChange(QSize(mViewPort.width(), mViewPort.height()));
 }
 
 void OpenGlWidget::keyPressEvent(QKeyEvent* event) {
@@ -261,6 +263,9 @@ void OpenGlWidget::handleResolutionChange(QSize resolution) {
   makeCurrent();
   mTextureRenderObject->changeTextureSizeAndFormat(resolution,
                                                    mTextureRenderObject->sourcePixelFormat());
+  for (const auto& obj : mRenderer->renderObjectManager()->mRenderObjectsList) {
+    obj->resizeGL(resolution.width(), resolution.height());  // or any method on RenderObject
+  }
 }
 
 void OpenGlWidget::updateRendering() {

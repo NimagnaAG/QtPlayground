@@ -146,25 +146,24 @@ void GeoGsRenderObject::setupShaderProgram() {
 
   // get variable locations
   m_uViewLoc = mShaderProgram->uniformLocation("uView");
-  m_uProjLoc = mShaderProgram->uniformLocation("uProj");
-
+  m_uProjLoc = mShaderProgram->uniformLocation("uProj"); 
   // Attention: viewport is fixed to 1080x720!
   viewportLocation = mShaderProgram->uniformLocation("uViewport");
-  QSize viewportSize = QOpenGLContext::currentContext()->surface()->size();
-  mShaderProgram->setUniformValue(viewportLocation,
-                                  QVector2D(viewportSize.width(), viewportSize.height()));
-  SPDLOG_INFO("in setupShaderProgram viewportSize.width(), viewportSize.height()",
-              viewportSize.width(), viewportSize.height());
+  QSize viewportSize = QOpenGLContext::currentContext()->screen()->size();
+  //mShaderProgram->setUniformValue(viewportLocation, QVector2D(viewportSize.width(), viewportSize.height()));
+   
   // Note: Assuming focal length to be fixed. Is 1500x1500 a good value?????? ANSWER BY JAMES: NOT
   // GOOD VALUE, need to get focal length from camera
   focalPosition = mShaderProgram->uniformLocation("uFocal");
-  auto [fx, fy] = calculateFocalLengths(fovY(), viewportSize.width(), viewportSize.height());
-  QVector2D focalValue(fx, fy);
-  mShaderProgram->setUniformValue(focalPosition, focalValue);
+  //auto [fx, fy] = calculateFocalLengths(fovY(), static_cast<float>(viewportSize.width()),  static_cast<float>(viewportSize.height()));
+  //QVector2D focalValue(fx, fy);
+  //mShaderProgram->setUniformValue(focalPosition, focalValue);
   mViewMatrix.setToIdentity(); 
-  const QVector3D upVector(1, -1, 0);
+  const QVector3D upVector(1, 1, 0);
   QVector3D position = QVector3D(1, 0, 0);
   mViewMatrix.lookAt(position, QVector3D(), upVector); 
+
+  resizeGL(viewportSize.width(), viewportSize.height());
   // glEnable(GL_BLEND);
 }
 
@@ -183,9 +182,12 @@ void GeoGsRenderObject::draw(const QMatrix4x4& viewMatrix, const QMatrix4x4& pro
   }*/
 
   mShaderProgram->bind();
-  QSize viewportSize = QOpenGLContext::currentContext()->surface()->size();
-  resizeGL(viewportSize.width(), viewportSize.height());
-
+  //QSize viewportSize = QOpenGLContext::currentContext()->screen()->size();
+  //resizeGL(viewportSize.width(), viewportSize.height());
+  if (isControlPressed) {
+      mShaderProgram->setUniformValue(m_uViewLoc, mViewMatrix);
+      sortSplatsAndUpdateIndexBufferObject(mViewMatrix * gsprojectionMatrix);
+  }
   // QMatrix4x4 gsprojectionMatrix = getProjectionMatrix(focalValue.x(), focalValue.y(),
   // viewportSize.width(), viewportSize.height()); sortSplatsAndUpdateIndexBufferObject(viewMatrix *
   // gsprojectionMatrix);
@@ -201,8 +203,9 @@ void GeoGsRenderObject::draw(const QMatrix4x4& viewMatrix, const QMatrix4x4& pro
   mVAO.bind();
   mIBO.bind();
   glDrawElements(GL_POINTS, int(mSplatData.positions.size()), GL_UNSIGNED_INT, 0);
-  // mVAO.release();
-  // mShaderProgram->release();
+ 
+   mVAO.release();
+  mShaderProgram->release();
 }
 
 void GeoGsRenderObject::RunSort(const QMatrix4x4& viewProj) {
@@ -410,6 +413,57 @@ QMatrix4x4  GeoGsRenderObject::rotate4(const QMatrix4x4& a, float rad, float x, 
   rotationMatrix.rotate(rad * 180.0f / M_PI, axis);  // Convert radians to degrees
 
   return a * rotationMatrix;
+}
+
+QMatrix4x4 GeoGsRenderObject::invert4(const QMatrix4x4& a) {
+  // Get the raw data from QMatrix4x4
+  const float* m = a.constData();
+
+  // Calculate the intermediate values
+  float b00 = m[0] * m[5] - m[1] * m[4];
+  float b01 = m[0] * m[6] - m[2] * m[4];
+  float b02 = m[0] * m[7] - m[3] * m[4];
+  float b03 = m[1] * m[6] - m[2] * m[5];
+  float b04 = m[1] * m[7] - m[3] * m[5];
+  float b05 = m[2] * m[7] - m[3] * m[6];
+  float b06 = m[8] * m[13] - m[9] * m[12];
+  float b07 = m[8] * m[14] - m[10] * m[12];
+  float b08 = m[8] * m[15] - m[11] * m[12];
+  float b09 = m[9] * m[14] - m[10] * m[13];
+  float b10 = m[9] * m[15] - m[11] * m[13];
+  float b11 = m[10] * m[15] - m[11] * m[14];
+
+  // Calculate determinant
+  float det = b00 * b11 - b01 * b10 + b02 * b09 + b03 * b08 - b04 * b07 + b05 * b06;
+
+  // Check if matrix is invertible
+  if (qFuzzyIsNull(det)) {
+    return QMatrix4x4();  // Return identity matrix if not invertible
+  }
+
+  // Create result matrix
+  QMatrix4x4 result;
+  float* r = result.data();
+
+  // Calculate inverse matrix elements
+  r[0] = (m[5] * b11 - m[6] * b10 + m[7] * b09) / det;
+  r[1] = (m[2] * b10 - m[1] * b11 - m[3] * b09) / det;
+  r[2] = (m[13] * b05 - m[14] * b04 + m[15] * b03) / det;
+  r[3] = (m[10] * b04 - m[9] * b05 - m[11] * b03) / det;
+  r[4] = (m[6] * b08 - m[4] * b11 - m[7] * b07) / det;
+  r[5] = (m[0] * b11 - m[2] * b08 + m[3] * b07) / det;
+  r[6] = (m[14] * b02 - m[12] * b05 - m[15] * b01) / det;
+  r[7] = (m[8] * b05 - m[10] * b02 + m[11] * b01) / det;
+  r[8] = (m[4] * b10 - m[5] * b08 + m[7] * b06) / det;
+  r[9] = (m[1] * b08 - m[0] * b10 - m[3] * b06) / det;
+  r[10] = (m[12] * b04 - m[13] * b02 + m[15] * b00) / det;
+  r[11] = (m[9] * b02 - m[8] * b04 - m[11] * b00) / det;
+  r[12] = (m[5] * b07 - m[4] * b09 - m[6] * b06) / det;
+  r[13] = (m[0] * b09 - m[1] * b07 + m[2] * b06) / det;
+  r[14] = (m[13] * b01 - m[12] * b03 - m[14] * b00) / det;
+  r[15] = (m[8] * b03 - m[9] * b01 + m[10] * b00) / det;
+
+  return result;
 }
 
 }  // namespace nimagna

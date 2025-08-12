@@ -56,7 +56,7 @@ class RENDERING_API GsRenderObject : public RenderObject, protected QOpenGLFunct
   // draws the render object.
   virtual void draw(const QMatrix4x4& viewMatrix, const QMatrix4x4& projectionMatrix) override;
   virtual void keyPressEvent(QKeyEvent* event) override {};
-
+  virtual void resizeGL(int w, int h) override {};
  private:
   std::vector<unsigned char> readFromFile(const std::filesystem::path& path);
 

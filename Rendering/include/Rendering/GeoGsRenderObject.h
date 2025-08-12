@@ -85,7 +85,7 @@ class RENDERING_API GeoGsRenderObject : public RenderObject, protected QOpenGLFu
   // the locations of the view and projection matrices in the shader
   int m_uViewLoc, m_uProjLoc;
   int viewportLocation, focalPosition;
-  QMatrix4x4 lastProj, mViewMatrix;
+  QMatrix4x4 lastProj, mViewMatrix, gsprojectionMatrix;
 
   // initialize the shader program
   void setupShaderProgram();
@@ -95,8 +95,9 @@ class RENDERING_API GeoGsRenderObject : public RenderObject, protected QOpenGLFu
   QOpenGLBuffer mVBO;
   // the index buffer with the vertex indices for each triangle
   QOpenGLBuffer mIBO;
-  int vertexCount = 0; 
+  int vertexCount = 0;
   QMatrix4x4 rotate4(const QMatrix4x4& a, float rad, float x, float y, float z);
+  QMatrix4x4 invert4(const QMatrix4x4& a);
   QByteArray data;
   bool isControlPressed = true;
   QMatrix4x4 getProjectionMatrix(float fx, float fy, int width, int height) {
@@ -107,74 +108,77 @@ class RENDERING_API GeoGsRenderObject : public RenderObject, protected QOpenGLFu
     projection.setColumn(1, {0, -2 * fy / height, 0, 0});
     projection.setColumn(2, {0, 0, zfar / (zfar - znear), 1});
     projection.setColumn(3, {0, 0, -(zfar * znear) / (zfar - znear), 0});
+    
     return projection;
   }
   QPair<float, float> calculateFocalLengths(float verticalFovDegrees, float width, float height) {
-    float fovYRad = qDegreesToRadians(verticalFovDegrees); 
+    float fovYRad = qDegreesToRadians(verticalFovDegrees);
     // Compute fy based on vertical FOV
-    float fy = height / (2.0f * qTan(fovYRad / 2.0f));
+    float fy = width / (2.0f * qTan(fovYRad / 2.0f));
 
     // Derive fx from fy and aspect ratio
     float aspect = width / height;
-    float fx = fy * aspect;
+    float fx = fy  ;
 
     return qMakePair(fx, fy);
   }
-  void resizeGL(int w, int h ) {  
-     QSize viewportSize = QOpenGLContext::currentContext()->surface()->size();
-     mShaderProgram->setUniformValue(viewportLocation, QVector2D(viewportSize.width(), viewportSize.height()));
+  void resizeGL(int w, int h) override {
+    QSize viewportSize = QOpenGLContext::currentContext()->screen()->size();
 
-     mShaderProgram->bind();
-     auto [fx, fy] = calculateFocalLengths(fovY(), static_cast<float>(viewportSize.width()), static_cast<float>(viewportSize.height())); 
-     QVector2D focalValue(fx, fy); 
-     mShaderProgram->setUniformValue(focalPosition, focalValue);  
-     QMatrix4x4 gsprojectionMatrix = getProjectionMatrix(fx, fy, w, h);
+    auto [fx, fy] = calculateFocalLengths(fovY(), static_cast<float>(viewportSize.width()),
+                                          static_cast<float>(viewportSize.height()));
+    QVector2D focalValue(fx, fy);
+    gsprojectionMatrix = getProjectionMatrix(fx, fy, static_cast<float>(viewportSize.width()),
+                                             static_cast<float>(viewportSize.height()));
 
-     mShaderProgram->setUniformValue(m_uProjLoc, gsprojectionMatrix);
-  
-     mShaderProgram->setUniformValue(m_uViewLoc, mViewMatrix);
-     if (isControlPressed) RunSort(mViewMatrix * gsprojectionMatrix);
-     SPDLOG_INFO("GeoGsRenderObject::resizeGL {}, {}, viewportSize {}, {}, focal {}, {}", w, h, viewportSize.width(), viewportSize.height(), fx, fy);
-   }
+    mShaderProgram->setUniformValue(viewportLocation,
+                                    QVector2D(viewportSize.width(), viewportSize.height()));
 
-  virtual void keyPressEvent(QKeyEvent* event) override { 
-      QString keyText = event->text();
-      isControlPressed = true;
-      QMatrix4x4 inv = mViewMatrix.inverted();
-      if (event->key() == Qt::Key_W) {
-        
-        inv.translate(0, 0, 0.05f);
+    mShaderProgram->bind();
 
-      } 
-      if (event->key() == Qt::Key_S) {
-        
-        inv.translate(0, 0, -0.05f);
-      }
-      if (event->key() == Qt::Key_A) { 
-        inv.translate(-0.05f, 0, 0);
-      }
-      if (event->key() == Qt::Key_D) { 
-        inv.translate(0.05f, 0, 0);
-      }
-      if (event->key() == Qt::Key_Q) { 
-        inv = rotate4(inv, -0.05f, 1, 0, 0);
-      }
-      if (event->key() == Qt::Key_E) { 
-        inv = rotate4(inv, 0.05f, 1, 0, 0);
-      }
-      if (event->key() == Qt::Key_Up) { 
-        inv = rotate4(inv, -0.05f, 1, 0, 0);
-      } else if (event->key() == Qt::Key_Down) { 
-        inv = rotate4(inv, 0.05f, 1, 0, 0);
-      } else if (event->key() == Qt::Key_Left) { 
-        inv = rotate4(inv, -0.05f, 0, 1, 0);
-      } else if (event->key() == Qt::Key_Right) { 
-        inv = rotate4(inv, 0.05f, 0, 1, 0);
-      } 
-      if (isControlPressed)
-       mViewMatrix = inv.inverted();
-    
-    SPDLOG_INFO("OpenGlWidget::resizeGL {}", keyText);
+    mShaderProgram->setUniformValue(focalPosition, focalValue);
+
+    mShaderProgram->setUniformValue(m_uProjLoc, gsprojectionMatrix);
+
+    mShaderProgram->setUniformValue(m_uViewLoc, mViewMatrix);
+    isControlPressed = true;
+    SPDLOG_INFO("GeoGsRenderObject::resizeGL {}, {}, viewportSize {}, {}, focal {}, {}", w, h,
+                viewportSize.width(), viewportSize.height(), fx, fy);
+  }
+
+  virtual void keyPressEvent(QKeyEvent* event) override {
+    QString keyText = event->text();
+    isControlPressed = true;
+    QMatrix4x4 inv = invert4(mViewMatrix);
+
+    if (event->key() == Qt::Key_W) {
+      inv.translate(0, 0, 0.1f);
+    }
+    if (event->key() == Qt::Key_S) {
+      inv.translate(0, 0, -0.1f);
+    }
+    if (event->key() == Qt::Key_A) {
+      inv.translate(-0.1f, 0, 0);
+    }
+    if (event->key() == Qt::Key_D) {
+      inv.translate(0.1f, 0, 0);
+    }
+    if (event->key() == Qt::Key_Q) {
+      inv = rotate4(inv, -0.1f, 1, 0, 0);
+    }
+    if (event->key() == Qt::Key_E) {
+      inv = rotate4(inv, 0.1f, 1, 0, 0);
+    }
+    if (event->key() == Qt::Key_Up) {
+      inv = rotate4(inv, 0.1f, 1, 0, 0);
+    } else if (event->key() == Qt::Key_Down) {
+      inv = rotate4(inv, -0.1f, 1, 0, 0);
+    } else if (event->key() == Qt::Key_Left) {
+      inv = rotate4(inv, -0.1f, 0, 1, 0);
+    } else if (event->key() == Qt::Key_Right) {
+      inv = rotate4(inv, 0.1f, 0, 1, 0);
+    }
+    if (isControlPressed) mViewMatrix = invert4(inv);
   };
 };
 

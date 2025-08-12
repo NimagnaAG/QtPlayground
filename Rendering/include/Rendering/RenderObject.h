@@ -49,6 +49,7 @@ class RENDERING_API RenderObject : public QObject {
   // state such that it can render itself. The object cannot assume that the OpenGL state is
   // preserved between two draw calls.
   virtual void draw(const QMatrix4x4& viewMatrix, const QMatrix4x4& projectionMatrix) = 0;
+  virtual void resizeGL(int w, int h) = 0;
   // get and set the model matrix
   const QMatrix4x4& modelMatrix() const { return mModelMatrix; }
 

@@ -93,6 +93,7 @@ class RENDERING_API TextureRenderObject : public RenderObject, protected QOpenGL
   // uploadVertexData after changing the vertex data
   void setVertexPosition(int vertexId, int index, float value);
   virtual void keyPressEvent(QKeyEvent* event) override {};
+  virtual void resizeGL(int w, int h) override {};
  protected:
   // the vertex shader code
   static const inline QString mVertexShaderFile = ":/resources/shaders/texture.vert";
