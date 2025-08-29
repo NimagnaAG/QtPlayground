@@ -181,12 +181,13 @@ void GsRenderObject::initializeGL() {
   f->glVertexAttribDivisor(a_index, 1);
 }
 
-void GsRenderObject::draw(const QMatrix4x4& viewMatrix, const QMatrix4x4& projectionMatrix) {
+void GsRenderObject::draw(const std::shared_ptr<RenderData> renderData) {
   if (!isDataReady) {
     return;
   }
 
   // determine the current position in the view and its change compared to the last update
+  const auto viewMatrix = renderData->viewMatrix();
   const auto inverseViewMatrix = viewMatrix.inverted();
   auto cameraPositionRaw = inverseViewMatrix.column(3);
   cameraPositionRaw /= cameraPositionRaw.w();
@@ -219,7 +220,7 @@ void GsRenderObject::draw(const QMatrix4x4& viewMatrix, const QMatrix4x4& projec
   f->glClear(GL_COLOR_BUFFER_BIT);
   checkOpenGLError("glClear");
 
-  // bind VAO and draw  
+  // bind VAO and draw
   m_vao.bind();
   checkOpenGLError("m_vao.bind");
   f->glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, vertexCount);
@@ -250,7 +251,6 @@ void GsRenderObject::setDepthIndex(const std::vector<unsigned int>& depthIndex) 
   f->glBufferData(GL_ARRAY_BUFFER, depthIndex.size() * 4, depthIndex.data(), GL_DYNAMIC_DRAW);
   SPDLOG_INFO("setDepthIndex done");
 }
-
 
 int GsRenderObject::floatToHalf(float val) {
   unsigned int f;

@@ -124,6 +124,22 @@ struct fmt::formatter<QVector3D> {
 };
 
 template <>
+struct fmt::formatter<QMatrix4x4> {
+  constexpr auto parse(format_parse_context &ctx) { return ctx.end(); }
+
+  template <typename Context>
+  auto format(const QMatrix4x4 &m, Context &ctx) {
+    const auto *mdata = m.constData();
+    return fmt::v8::format_to(ctx.out(),
+                              "[{:.2f}/{:.2f}/{:.2f}/{:.2f}] [{:.2f}/{:.2f}/{:.2f}/{:.2f}] "
+                              "[{:.2f}/{:.2f}/{:.2f}/{:.2f}] [{:.2f}/{:.2f}/{:.2f}/{:.2f}]",
+                              mdata[0], mdata[1], mdata[2], mdata[3], mdata[4], mdata[5], mdata[6],
+                              mdata[7], mdata[8], mdata[9], mdata[10], mdata[11], mdata[12],
+                              mdata[13], mdata[14], mdata[15]);
+  }
+};
+
+template <>
 struct fmt::formatter<QJsonObject> {
   constexpr auto parse(format_parse_context &ctx) { return ctx.end(); }
 

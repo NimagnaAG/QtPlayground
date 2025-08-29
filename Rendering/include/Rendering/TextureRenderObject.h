@@ -42,7 +42,7 @@ class RENDERING_API TextureRenderObject : public RenderObject, protected QOpenGL
   virtual void initialize() override;
 
   // draws the render object.
-  virtual void draw(const QMatrix4x4& viewMatrix, const QMatrix4x4& projectionMatrix) override;
+  virtual void draw(const std::shared_ptr<RenderData> renderData) override;
 
   // get the source's texture and mask size
   bool isEmpty() const;
@@ -92,8 +92,7 @@ class RENDERING_API TextureRenderObject : public RenderObject, protected QOpenGL
   // set the position of a particular vertex. does not upload the data to the GPU -> call
   // uploadVertexData after changing the vertex data
   void setVertexPosition(int vertexId, int index, float value);
-  virtual void keyPressEvent(QKeyEvent* event) override {};
-  virtual void resizeGL(int w, int h) override {};
+
  protected:
   // the vertex shader code
   static const inline QString mVertexShaderFile = ":/resources/shaders/texture.vert";

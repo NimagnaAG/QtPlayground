@@ -252,7 +252,7 @@ void GltfRenderObject::setupShaderPrograms() {
   }
 }
 
-void GltfRenderObject::draw(const QMatrix4x4& viewMatrix, const QMatrix4x4& projectionMatrix) {
+void GltfRenderObject::draw(const std::shared_ptr<RenderData> renderData) {
   if (!mShaderProgram) {
     SPDLOG_ERROR("Shader program is not available.");
     return;
@@ -269,8 +269,8 @@ void GltfRenderObject::draw(const QMatrix4x4& viewMatrix, const QMatrix4x4& proj
   // bind and update shader program with model, view, and projection matrices
   mShaderProgram->bind();
   mShaderProgram->setUniformValue("model", modelMatrix());
-  mShaderProgram->setUniformValue("view", viewMatrix);
-  mShaderProgram->setUniformValue("projection", projectionMatrix);
+  mShaderProgram->setUniformValue("view", renderData->viewMatrix());
+  mShaderProgram->setUniformValue("projection", renderData->projectionMatrix());
 
   // render each mesh
   for (size_t i = 0; i < mVAOs.size(); ++i) {

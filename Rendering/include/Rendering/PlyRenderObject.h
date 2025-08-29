@@ -1,4 +1,4 @@
-#pragma once  
+#pragma once
 #include <QtCore/QMutex>
 #include <QtCore/QSize>
 #include <QtCore/QString>
@@ -9,13 +9,11 @@
 #include <QtOpenGL/QOpenGLShaderProgram>
 #include <QtOpenGL/QOpenGLTexture>
 #include <QtOpenGL/QOpenGLVertexArrayObject>
-#include <vector>
-#include <string>
 #include <memory>
+#include <string>
+#include <vector>
 
 #include "RenderObject.h"
-
-
 
 namespace nimagna {
 
@@ -26,10 +24,9 @@ class RENDERING_API PlyRenderObject : public RenderObject, protected QOpenGLFunc
 
   friend class OpenGlWidget;
 
- public: 
-
+ public:
   PlyRenderObject() = delete;
-  PlyRenderObject(const QString& location); 
+  PlyRenderObject(const QString& location);
   // not copyable or movable
   PlyRenderObject(const PlyRenderObject& other) = delete;
   PlyRenderObject& operator=(const PlyRenderObject& other) = delete;
@@ -39,26 +36,23 @@ class RENDERING_API PlyRenderObject : public RenderObject, protected QOpenGLFunc
 
   // initializes the render object.
   virtual void initialize() override;
-   
+
   // draws the render object.
-  virtual void draw(const QMatrix4x4& viewMatrix, const QMatrix4x4& projectionMatrix) override;
-  virtual void keyPressEvent(QKeyEvent* event) override {};
-  virtual void resizeGL(int w, int h) override {};
+  virtual void draw(const std::shared_ptr<RenderData> renderData) override;
   // Static utility functions for PLY file handling
-   QString FindConfigFile(const QString& plyFilename, const QString& configFilename);
-    QString GetFilenameWithoutExtension(const QString& filepath); 
- 
+  QString FindConfigFile(const QString& plyFilename, const QString& configFilename);
+  QString GetFilenameWithoutExtension(const QString& filepath);
+
  protected:
   // the vertex shader code
   static const inline QString mVertexShaderFile = ":/resources/shaders/texture.vert";
   // the fragment shader code
-   
+
   // the shaders
   std::unique_ptr<QOpenGLShaderProgram> mShaderProgram;
-   
+
   // initialize the shader program
   void setupShaderProgram();
-      
 };
 
 }  // namespace nimagna

@@ -3,7 +3,6 @@
 #include "Rendering/RenderData.h"
 
 #include <QtCore/QJsonArray>
-#include <numbers>
 
 namespace nimagna {
 
@@ -112,7 +111,7 @@ QMatrix4x4 RenderData::projectionMatrix() const {
     // 2D projection
     const auto& framing = framing2D();
     projectionMatrix.ortho(framing.left(), framing.right(), framing.bottom(), framing.top(),
-                -100 /*nearPlane*/, 100 /*farPlane*/);
+                           -100 /*nearPlane*/, 100 /*farPlane*/);
   } else {
     // 3D projection
     const auto& framing = framing3D();
@@ -123,6 +122,9 @@ QMatrix4x4 RenderData::projectionMatrix() const {
   }
   return projectionMatrix;
 }
- 
+
+void RenderData::ShotFraming3D::setFieldOfViewAngle(float fieldOfViewAngle) {
+  mFieldOfViewAngle = fieldOfViewAngle;
+}
 
 }  // namespace nimagna

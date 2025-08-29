@@ -7,6 +7,7 @@
 #include <QtGui/QQuaternion>
 #include <algorithm>  // std::clamp
 
+#include "Rendering/RenderData.h"
 #include "Rendering/Rendering.h"
 
 namespace nimagna {
@@ -48,8 +49,7 @@ class RENDERING_API RenderObject : public QObject {
   // Draws the ob into the framebuffer object. This must ensure that the object sets up the OpenGL
   // state such that it can render itself. The object cannot assume that the OpenGL state is
   // preserved between two draw calls.
-  virtual void draw(const QMatrix4x4& viewMatrix, const QMatrix4x4& projectionMatrix) = 0;
-  virtual void resizeGL(int w, int h) = 0;
+  virtual void draw(const std::shared_ptr<RenderData> renderData) = 0;
   // get and set the model matrix
   const QMatrix4x4& modelMatrix() const { return mModelMatrix; }
 
@@ -71,15 +71,11 @@ class RENDERING_API RenderObject : public QObject {
     updateModelMatrix();
     emit propertiesChanged();
   }
-  const float& fovY() const { return mFovY; }
-  void setFovY(float fovY) { mFovY = fovY;
-  }
   // check if initialized
   bool isInitialized() const;
   bool readyForRendering() const { return mIsReadyForRendering; }
   void setLayer(int layer);
   int layer() const;
-  virtual void keyPressEvent(QKeyEvent* event) = 0;
 
  signals:
   void propertiesChanged();
@@ -91,7 +87,6 @@ class RENDERING_API RenderObject : public QObject {
  private:
   QVector3D mPosition = {0.0f, 0.0f, 0.0f};
   QVector3D mRotation = {0.0f, 0.0f, 0.0f};
-  float mFovY = 90.0f;  // default vertical field of view in degrees
   float mScale = 1.0f;
   // the object's own model matrix defines the position, rotation, and scale of the object in the
   // world coordinate system.

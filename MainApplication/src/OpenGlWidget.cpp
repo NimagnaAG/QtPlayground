@@ -1,4 +1,4 @@
- #include "pch.h"
+#include "pch.h"
 
 #include "OpenGlWidget.h"
 
@@ -18,6 +18,8 @@ OpenGlWidget::OpenGlWidget(QWidget* parent /*= nullptr*/, Qt::WindowFlags f /*= 
   format.setProfile(QSurfaceFormat::CoreProfile);
   format.setVersion(4, 0);
   format.setSamples(8);
+  mOrthographic2DFraming = std::make_shared<RenderData>();
+  mOrthographic2DFraming->setRenderMode(RenderData::RenderMode::Render2D);
   setFormat(format);
   setFocusPolicy(Qt::StrongFocus);
   setMouseTracking(true);
@@ -60,14 +62,13 @@ void OpenGlWidget::initializeGL() {
   initializeOpenGLFunctions();
   // initialize the texture render object with all the OpenGL stuff
   mTextureRenderObject->initialize();
-  auto outputResolution = QSize(1080, 720);
-  mTextureRenderObject->changeTextureSizeAndFormat(outputResolution,
-                                                   mTextureRenderObject->sourcePixelFormat());
-  mTextureRenderObject->setFlipVertically(false);
+  mTextureRenderObject->setFlipVertically(true);
   mTextureRenderObject->useExternalTexture(true);
   mTextureRenderObject->setFlipHorizontally(false);
 
   // update resolution and connect to settings change
+  // the resolution of the texture of the offscreen rendered image is fixed to 1080p for now
+  auto outputResolution = QSize(1080, 720);
   handleResolutionChange(outputResolution);
   winId();  // required to get correct pixel ratio for high dpi setups
   glEnable(GL_MULTISAMPLE);
@@ -96,7 +97,7 @@ void OpenGlWidget::paintGL() {
         mRenderer->renderObjectManager()->renderFrameBuffer()->texture());
   }
   // render texture object without using its texture
-  mTextureRenderObject->draw({}, {});
+  mTextureRenderObject->draw(mOrthographic2DFraming);
   glActiveTexture(GL_TEXTURE0);
 
   if (!mFirstDrawOccurred) {
@@ -126,10 +127,7 @@ void OpenGlWidget::resizeGL(int w, int h) {
     mViewPort.setWidth(pixelRatio * width());
     mViewPort.setHeight(pixelRatio * newHeight);
   }
-  SPDLOG_INFO("OpenGlWidget::resizeGL {}, {}, ratio {}", mViewPort.width(), mViewPort.height(), ratio);
   QOpenGLWidget::resizeGL(w, h);
-  // handle resolution change in the texture render object
-  handleResolutionChange(QSize(mViewPort.width(), mViewPort.height()));
 }
 
 void OpenGlWidget::keyPressEvent(QKeyEvent* event) {
@@ -162,10 +160,6 @@ void OpenGlWidget::keyPressEvent(QKeyEvent* event) {
     rom->currentRenderData()->setFraming3D(framing3D);
     updateRendering();
   }
-    SPDLOG_INFO("Gs keyPressEvent");
-  for (const auto& obj : mRenderer->renderObjectManager()->mRenderObjectsList) {
-      obj->keyPressEvent(event);  // or any method on RenderObject
-    }
 }
 
 void OpenGlWidget::keyReleaseEvent(QKeyEvent* event) {
@@ -181,8 +175,12 @@ void OpenGlWidget::mousePressEvent(QMouseEvent* event) {
 
   const auto& renderData = rom->currentRenderData();
   event->ignore();
-  if (mTrackballEnabled && renderData && renderData->is3D() && event->button() == Qt::LeftButton) {
-    mLeftButtonDown = true;
+  if (mTrackballEnabled && renderData && renderData->is3D()) {
+    if (event->button() == Qt::LeftButton) {
+      mLeftButtonDown = true;
+    } else if (event->button() == Qt::RightButton) {
+      mRightButtonDown = true;
+    }
     mLastMousePosition = event->globalPosition().toPoint();
   }
   if (!event->isAccepted()) {
@@ -197,8 +195,12 @@ void OpenGlWidget::mouseReleaseEvent(QMouseEvent* event) {
 
   const auto& renderData = rom->currentRenderData();
   event->ignore();
-  if (mTrackballEnabled && renderData && renderData->is3D() && event->button() == Qt::LeftButton) {
-    mLeftButtonDown = false;
+  if (mTrackballEnabled && renderData && renderData->is3D()) {
+    if (event->button() == Qt::LeftButton) {
+      mLeftButtonDown = false;
+    } else if (event->button() == Qt::RightButton) {
+      mRightButtonDown = false;
+    }
   }
   if (!event->isAccepted()) {
     QOpenGLWidget::mouseReleaseEvent(event);
@@ -212,16 +214,26 @@ void OpenGlWidget::mouseMoveEvent(QMouseEvent* event) {
 
   const auto& renderData = rom->currentRenderData();
   event->ignore();
-  if (mTrackballEnabled && mLeftButtonDown && renderData && renderData->is3D()) {
-    // left button pressed (only in 3D)
-    float factor = 0.035f;
-    float differenceX = factor * (event->globalPosition().x() - mLastMousePosition.x());
-    float differenceY = factor * (event->globalPosition().y() - mLastMousePosition.y());
+  if (mTrackballEnabled && renderData && renderData->is3D()) {
     RenderData::ShotFraming3D framing3D = renderData->framing3D();
-    QVector3D position = framing3D.position();
-    position += QVector3D(differenceX, differenceY, 0);
-    mLastMousePosition = event->globalPosition().toPoint();
-    framing3D.setPosition(position);
+    if (mLeftButtonDown) {
+      // left button pressed (only in 3D)
+      float factor = 0.035f;
+      float differenceX = factor * (event->globalPosition().x() - mLastMousePosition.x());
+      float differenceY = factor * (event->globalPosition().y() - mLastMousePosition.y());
+      QVector3D position = framing3D.position();
+      position += QVector3D(differenceX, differenceY, 0);
+      mLastMousePosition = event->globalPosition().toPoint();
+      framing3D.setPosition(position);
+    } else if (mRightButtonDown) {
+      float factor = 0.035f;
+      float differenceX = factor * (event->globalPosition().x() - mLastMousePosition.x());
+      float differenceY = factor * (event->globalPosition().y() - mLastMousePosition.y());
+      QVector3D position = framing3D.lookAtPoint();
+      position += QVector3D(differenceX, differenceY, 0);
+      mLastMousePosition = event->globalPosition().toPoint();
+      framing3D.setLookAtPoint(position);
+    }
     renderData->setFraming3D(framing3D);
     updateRendering();
     event->accept();
@@ -241,7 +253,7 @@ void OpenGlWidget::wheelEvent(QWheelEvent* event) {
   if (mTrackballEnabled && renderData && renderData->is3D()) {
     QPointF delta = event->angleDelta();
     const float changeFactor = 1 / 20.f;
-    RenderData::ShotFraming3D framing3D = renderData->framing3D();
+    auto framing3D = renderData->framing3D();
     float angle = framing3D.fieldOfViewAngle();
     angle += delta.y() * changeFactor;
     const float minViewAngle = 2.f;
@@ -250,7 +262,6 @@ void OpenGlWidget::wheelEvent(QWheelEvent* event) {
     if (angle > maxViewAngle) angle = maxViewAngle;
     framing3D.setFieldOfViewAngle(angle);
     renderData->setFraming3D(framing3D);
-    rom->UpdateObjectFov(angle);
     updateRendering();
     event->accept();
   }
@@ -263,9 +274,6 @@ void OpenGlWidget::handleResolutionChange(QSize resolution) {
   makeCurrent();
   mTextureRenderObject->changeTextureSizeAndFormat(resolution,
                                                    mTextureRenderObject->sourcePixelFormat());
-  for (const auto& obj : mRenderer->renderObjectManager()->mRenderObjectsList) {
-    obj->resizeGL(resolution.width(), resolution.height());  // or any method on RenderObject
-  }
 }
 
 void OpenGlWidget::updateRendering() {

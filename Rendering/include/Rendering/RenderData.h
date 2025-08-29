@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QtCore/QObject>
+#include <QtCore/QSize>
 #include <QtGui/QMatrix4x4>
 #include <vector>
 
@@ -66,10 +67,7 @@ class RENDERING_API RenderData : public QObject {
     QVector3D lookAtPoint() const { return mLookAtPoint; }
     void setLookAtPoint(QVector3D lookAt) { mLookAtPoint = lookAt; }
     float fieldOfViewAngle() const { return mFieldOfViewAngle; }
-    void setFieldOfViewAngle(float fieldOfViewAngle) {
-      mFieldOfViewAngle = fieldOfViewAngle;
-      SPDLOG_INFO("setFieldOfViewAngle {}", mFieldOfViewAngle);
-    }
+    void setFieldOfViewAngle(float fieldOfViewAngle);
 
     explicit ShotFraming3D(const QJsonObject& from);
     explicit operator QJsonObject() const;
@@ -78,7 +76,6 @@ class RENDERING_API RenderData : public QObject {
     QVector3D mPosition;
     QVector3D mLookAtPoint;
     float mFieldOfViewAngle;
-
   };
 
   RenderData() = default;
@@ -103,12 +100,15 @@ class RENDERING_API RenderData : public QObject {
   void setFraming3D(const ShotFraming3D& framing3D);
 
   QMatrix4x4 viewMatrix() const;
-  QMatrix4x4 projectionMatrix() const; 
-  float fieldOfViewAngle() { return mShotFraming3D.fieldOfViewAngle();
-  }
+  QMatrix4x4 projectionMatrix() const;
+  float fieldOfViewAngle() { return mShotFraming3D.fieldOfViewAngle(); }
+  void setViewport(const QSize& viewport) { mViewport = viewport; };
+  QSize viewport() const { return mViewport; }
+
  protected:
   ShotFraming2D mShotFraming2D;
   ShotFraming3D mShotFraming3D;
+  QSize mViewport;
 
  private:
   RenderMode mRenderMode = RenderMode::Render2D;

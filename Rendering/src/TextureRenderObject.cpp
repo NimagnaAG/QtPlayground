@@ -209,7 +209,7 @@ void TextureRenderObject::enableSeparateMask(bool separateMaskEnabled, bool blur
   }
 }
 
-void TextureRenderObject::draw(const QMatrix4x4& viewMatrix, const QMatrix4x4& projectionMatrix) {
+void TextureRenderObject::draw(const std::shared_ptr<RenderData> renderData) {
   if (isEmpty()) {
     return;
   }
@@ -226,13 +226,16 @@ void TextureRenderObject::draw(const QMatrix4x4& viewMatrix, const QMatrix4x4& p
   }
 
   // set up the expected OpenGL state
+  // glEnable(GL_BLEND);
+  // glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_COLOR);
+
   glDisable(GL_CULL_FACE);
 
   // once the draw method is callled, the view projection matrix is set (RenderObjectManager calls
   // prepare to set it)
   // to create the full model-view-projection matrix, we need to multiply the view projection with
   // the object's model matrix
-  const QMatrix4x4 mvp = projectionMatrix * viewMatrix * modelMatrix();
+  const QMatrix4x4 mvp = renderData->projectionMatrix() * renderData->viewMatrix() * modelMatrix();
   // this is passed to the shader program's vertex shader to transform each vertex position into
   // camera view space
   mShaderProgram->setUniformValue(mWorldTransformationShaderPosition, mvp);

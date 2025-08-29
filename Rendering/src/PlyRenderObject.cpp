@@ -23,7 +23,7 @@ void PlyRenderObject::initialize() {
   // Additional initialization (buffers, VAO, textures) can be added here
 }
 
-void PlyRenderObject::draw(const QMatrix4x4& viewMatrix, const QMatrix4x4& projectionMatrix) {
+void PlyRenderObject::draw(const std::shared_ptr<RenderData> renderData) {
   if (!mShaderProgram) return;
   mShaderProgram->bind();
   // Bind VAO, textures, set uniforms, etc.
@@ -73,11 +73,11 @@ QString PlyRenderObject::FindConfigFile(const QString& plyFilename, const QStrin
 }
 
 QString PlyRenderObject::GetFilenameWithoutExtension(const QString& filepath) {
-  std::filesystem::path pathObj(filepath.toStdString()); 
+  std::filesystem::path pathObj(filepath.toStdString());
   // Check if the path has a stem (the part of the path before the extension)
   if (pathObj.has_stem()) {
     return QString::fromStdString(pathObj.stem().string());
-  } 
+  }
   // If there is no stem, return an empty string
   return "";
 }
