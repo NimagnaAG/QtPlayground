@@ -26,11 +26,11 @@ int RenderObject::layer() const {
 void RenderObject::updateModelMatrix() {
   QMatrix4x4 modelMatrix;
   mModelMatrix.setToIdentity();
-  modelMatrix.translate(mPosition);
+  modelMatrix.scale(mScale);
   modelMatrix.rotate(mRotation.x(), {1.0, 0.0, 0.0});
   modelMatrix.rotate(mRotation.y(), {0.0, 1.0, 0.0});
   modelMatrix.rotate(mRotation.z(), {0.0, 0.0, 1.0});
-  modelMatrix.scale(mScale);
+  modelMatrix.translate(mPosition);
   mModelMatrix = modelMatrix;
   emit propertiesChanged();
 }

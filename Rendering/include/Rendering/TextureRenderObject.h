@@ -193,7 +193,7 @@ class RENDERING_API TextureRenderObject : public RenderObject, protected QOpenGL
   // normally, this is [-1,-1,1,1,2,2] but if the texture width/height are not 16/9, the vertices
   // must be adapted
   // Note that this coordinate system has x from left to right and y from bottom to top
-  static std::array<float, 6> textureVertexPositions(const QSize& textureSize);
+  std::array<float, 6> textureVertexPositions(const QSize& textureSize);
 };
 
 }  // namespace nimagna

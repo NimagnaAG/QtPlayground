@@ -22,7 +22,7 @@ namespace nimagna {
  in a list and render itself into the FBO. The RenderObjectManager offers the offscreen
  framebuffer object as a texture to the OpenGL widget.
 
- The resolution of the offscreen framebuffer object is fixed to 1080x720 pixels by default, but
+ The resolution of the offscreen framebuffer object is fixed to 1920x1080 pixels by default, but
  should be considered as potentially dynamic. The RenderObjectManager::onOutputSettingsChanged is
  resposible to update the FBO if the rendering resolution changes.
 
@@ -71,6 +71,7 @@ class RENDERING_API RenderObjectManager final : public QObject {
   const TextureRenderObject::TextureTarget renderFrameBufferType() const {
     return mRenderFramebufferTarget;
   }
+  const QSize& currentOutputResolution() const { return mCurrentOutputResolution; }
 
   // method to add a render object of a specific type. See also specific methods below
   void addObject(RenderObjectType type, const QString& filename);
@@ -85,6 +86,8 @@ class RENDERING_API RenderObjectManager final : public QObject {
   void changeOpenGlDebugging(bool enabled);
   // the ordered list of all render objects
   RenderObjectList mRenderObjectsList;
+
+  void resetViewMatrix();
 
  signals:
   void beginInsertRows(int first, int last);
@@ -129,7 +132,7 @@ class RENDERING_API RenderObjectManager final : public QObject {
   const TextureRenderObject::TextureTarget mRenderFramebufferTarget =
       TextureRenderObject::kDefaultTextureTarget;
   std::unique_ptr<QOpenGLFramebufferObject> mMultisampleFramebuffer;
-  QSize mCurrentOutputResolution = {};
+  QSize mCurrentOutputResolution = {1920, 1080};
 
   // the core application
   std::shared_ptr<RenderData> mCurrentRenderData;

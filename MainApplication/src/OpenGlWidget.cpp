@@ -68,8 +68,7 @@ void OpenGlWidget::initializeGL() {
 
   // update resolution and connect to settings change
   // the resolution of the texture of the offscreen rendered image is fixed to 1080p for now
-  auto outputResolution = QSize(1080, 720);
-  handleResolutionChange(outputResolution);
+  handleResolutionChange(mRenderer->renderObjectManager()->currentOutputResolution());
   winId();  // required to get correct pixel ratio for high dpi setups
   glEnable(GL_MULTISAMPLE);
 
@@ -107,27 +106,83 @@ void OpenGlWidget::paintGL() {
   mFirstDrawOccurred = true;
 }
 
+void OpenGlWidget::paintEvent(QPaintEvent* event) {
+  QOpenGLWidget::paintEvent(event);
+
+  if (mDrawDebugInfo) {
+    QPainter painter(this);
+    painter.setRenderHint(QPainter::Antialiasing);
+    const auto rd = mRenderer->renderObjectManager()->currentRenderData();
+    const auto viewPos = 20;
+    painter.drawText(10, viewPos, "View");
+    auto v = rd->viewMatrix().constData();
+    for (auto r = 0; r < 4; ++r) {
+      painter.drawText(10, viewPos + 20 + r * 20,
+                       QString("%1 %2 %3 %4")
+                           .arg(v[r * 4 + 0], 0, 'f', 3)
+                           .arg(v[r * 4 + 1], 0, 'f', 3)
+                           .arg(v[r * 4 + 2], 0, 'f', 3)
+                           .arg(v[r * 4 + 3], 0, 'f', 3));
+    }
+    painter.drawText(10, viewPos + 100, QString("FOV: %1").arg(rd->fieldOfViewAngle()));
+    const auto projPos = viewPos + 120;
+    painter.drawText(10, projPos, "Projection");
+    v = rd->projectionMatrix().constData();
+    for (auto r = 0; r < 4; ++r) {
+      painter.drawText(10, projPos + 20 + r * 20,
+                       QString("%1 %2 %3 %4")
+                           .arg(v[r * 4 + 0], 0, 'f', 3)
+                           .arg(v[r * 4 + 1], 0, 'f', 3)
+                           .arg(v[r * 4 + 2], 0, 'f', 3)
+                           .arg(v[r * 4 + 3], 0, 'f', 3));
+    }
+    painter.drawText(
+        10, projPos + 100,
+        QString("Viewport: %1x%2").arg(rd->viewport().width()).arg(rd->viewport().height()));
+    auto [fx, fy] = rd->calculateFocalLengths();
+    painter.drawText(10, projPos + 140, QString("fx,fy: %1, %2").arg(fx).arg(fy));
+    const auto ppd = rd->getProjectionMatrix(fx, fy);
+    const auto pprojPos = projPos + 160;
+    painter.drawText(10, pprojPos, "GEO Proj");
+    v = rd->projectionMatrix().constData();
+    for (auto r = 0; r < 4; ++r) {
+      painter.drawText(10, pprojPos + 20 + r * 20,
+                       QString("%1 %2 %3 %4")
+                           .arg(ppd.constData()[r * 4 + 0], 0, 'f', 3)
+                           .arg(ppd.constData()[r * 4 + 1], 0, 'f', 3)
+                           .arg(ppd.constData()[r * 4 + 2], 0, 'f', 3)
+                           .arg(ppd.constData()[r * 4 + 3], 0, 'f', 3));
+    }
+  }
+}
+
 void OpenGlWidget::resizeGL(int w, int h) {
   // needs pixel ratio for high dpi displays
   double pixelRatio = devicePixelRatioF();
-  // Viewport: present framebuffer in a centered 16/9 format
-  float ratio = static_cast<float>(width()) / height();
-  if (ratio > (16.f / 9.f)) {
+  //  Viewport: present ROM framebuffer in a centered 16/9 format
+  const float widgetRatio = static_cast<float>(width()) / height();
+  const auto outputResolution = mRenderer->renderObjectManager()->currentOutputResolution();
+  const float outputRatio =
+      outputResolution.width() / static_cast<float>(outputResolution.height());
+  if (widgetRatio > outputRatio) {
     // width bigger
-    int newWidth = 16.f * height() / 9.f;
+    int newWidth = outputRatio * height();
     mViewPort.setX(pixelRatio * (width() - newWidth) / 2);
     mViewPort.setY(0);
     mViewPort.setHeight(pixelRatio * height());
     mViewPort.setWidth(pixelRatio * newWidth);
   } else {
     // height bigger
-    int newHeight = 9.f * width() / 16.f;
+    int newHeight = width() / outputRatio;
     mViewPort.setX(0);
     mViewPort.setY(pixelRatio * (height() - newHeight) / 2);
     mViewPort.setWidth(pixelRatio * width());
     mViewPort.setHeight(pixelRatio * newHeight);
   }
   QOpenGLWidget::resizeGL(w, h);
+  mOrthographic2DFraming->setViewport(mViewPort.size());
+  SPDLOG_INFO("ResizeGL: {}x{} (viewport: {}x{}/{}x{})", w, h, mViewPort.x(), mViewPort.y(),
+              mViewPort.width(), mViewPort.height());
 }
 
 void OpenGlWidget::keyPressEvent(QKeyEvent* event) {
@@ -135,29 +190,50 @@ void OpenGlWidget::keyPressEvent(QKeyEvent* event) {
     mShiftKeyDown = true;
   }
   const float stepLength = 0.1f;
+  const float rotLength = 1.0f;
   if (!mRenderer) return;
   auto rom = mRenderer->renderObjectManager();
   if (!rom) return;
   const auto& renderData = rom->currentRenderData();
   if (mTrackballEnabled && renderData && renderData->is3D()) {
-    RenderData::ShotFraming3D framing3D = rom->currentRenderData()->framing3D();
-    QVector3D vector = framing3D.position();
-    if (mShiftKeyDown) {
-      vector = framing3D.lookAtPoint();
+    auto viewMatrix = rom->currentRenderData()->viewMatrix();
+    auto inverseViewMatrix = viewMatrix.inverted();
+    switch (event->key()) {
+      case Qt::Key_W:
+        inverseViewMatrix.translate(0, 0, -stepLength);
+        break;
+      case Qt::Key_S:
+        inverseViewMatrix.translate(0, 0, stepLength);
+        break;
+      case Qt::Key_A:
+        inverseViewMatrix.translate(-stepLength, 0, 0);
+        break;
+      case Qt::Key_D:
+        inverseViewMatrix.translate(stepLength, 0, 0);
+        break;
+      case Qt::Key_Q:
+        inverseViewMatrix.translate(0, -stepLength, 0);
+        break;
+      case Qt::Key_E:
+        inverseViewMatrix.translate(0, stepLength, 0);
+        break;
+      case Qt::Key_Up:
+        inverseViewMatrix.rotate(rotLength, {1, 0, 0});
+        break;
+      case Qt::Key_Down:
+        inverseViewMatrix.rotate(-rotLength, {1, 0, 0});
+        break;
+      case Qt::Key_Left:
+        inverseViewMatrix.rotate(rotLength, {0, 1, 0});
+        break;
+      case Qt::Key_Right:
+        inverseViewMatrix.rotate(-rotLength, {0, 1, 0});
+        break;
+      default:
+        break;
     }
-    if (event->key() == Qt::Key_W) vector += QVector3D(0, 0, -stepLength);
-    if (event->key() == Qt::Key_S) vector += QVector3D(0, 0, stepLength);
-    if (event->key() == Qt::Key_A) vector += QVector3D(-stepLength, 0, 0);
-    if (event->key() == Qt::Key_D) vector += QVector3D(stepLength, 0, 0);
-    if (event->key() == Qt::Key_Q) vector += QVector3D(0, stepLength, 0);
-    if (event->key() == Qt::Key_E) vector += QVector3D(0, -stepLength, 0);
-    event->accept();
-    if (mShiftKeyDown) {
-      framing3D.setLookAtPoint(vector);
-    } else {
-      framing3D.setPosition(vector);
-    }
-    rom->currentRenderData()->setFraming3D(framing3D);
+    rom->currentRenderData()->setViewMatrix(inverseViewMatrix.inverted());
+
     updateRendering();
   }
 }
@@ -215,26 +291,22 @@ void OpenGlWidget::mouseMoveEvent(QMouseEvent* event) {
   const auto& renderData = rom->currentRenderData();
   event->ignore();
   if (mTrackballEnabled && renderData && renderData->is3D()) {
-    RenderData::ShotFraming3D framing3D = renderData->framing3D();
-    if (mLeftButtonDown) {
-      // left button pressed (only in 3D)
-      float factor = 0.035f;
-      float differenceX = factor * (event->globalPosition().x() - mLastMousePosition.x());
-      float differenceY = factor * (event->globalPosition().y() - mLastMousePosition.y());
-      QVector3D position = framing3D.position();
-      position += QVector3D(differenceX, differenceY, 0);
-      mLastMousePosition = event->globalPosition().toPoint();
-      framing3D.setPosition(position);
-    } else if (mRightButtonDown) {
-      float factor = 0.035f;
-      float differenceX = factor * (event->globalPosition().x() - mLastMousePosition.x());
-      float differenceY = factor * (event->globalPosition().y() - mLastMousePosition.y());
-      QVector3D position = framing3D.lookAtPoint();
-      position += QVector3D(differenceX, differenceY, 0);
-      mLastMousePosition = event->globalPosition().toPoint();
-      framing3D.setLookAtPoint(position);
+    float differenceX = (event->globalPosition().x() - mLastMousePosition.x());
+    float differenceY = (event->globalPosition().y() - mLastMousePosition.y());
+
+    auto viewMatrix = rom->currentRenderData()->viewMatrix();
+    auto inverseViewMatrix = viewMatrix.inverted();
+    if (mRightButtonDown) {
+      float factor = 0.025f;
+      inverseViewMatrix.translate(-factor * differenceX, -factor * differenceY, 0);
+    } else if (mLeftButtonDown) {
+      float factor = 0.1f;
+      inverseViewMatrix.rotate(factor * differenceX, {0, 1, 0});
+      inverseViewMatrix.rotate(-factor * differenceY, {1, 0, 0});
     }
-    renderData->setFraming3D(framing3D);
+    rom->currentRenderData()->setViewMatrix(inverseViewMatrix.inverted());
+
+    mLastMousePosition = event->globalPosition().toPoint();
     updateRendering();
     event->accept();
   }
@@ -256,11 +328,8 @@ void OpenGlWidget::wheelEvent(QWheelEvent* event) {
     auto framing3D = renderData->framing3D();
     float angle = framing3D.fieldOfViewAngle();
     angle += delta.y() * changeFactor;
-    const float minViewAngle = 2.f;
-    const float maxViewAngle = 180.f;
-    if (angle < minViewAngle) angle = minViewAngle;
-    if (angle > maxViewAngle) angle = maxViewAngle;
-    framing3D.setFieldOfViewAngle(angle);
+    framing3D.setFieldOfViewAngle(std::clamp(angle, 2.f, 180.f));
+    SPDLOG_INFO("Change view angle to {}", angle);
     renderData->setFraming3D(framing3D);
     updateRendering();
     event->accept();

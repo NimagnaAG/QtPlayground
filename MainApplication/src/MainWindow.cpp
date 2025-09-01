@@ -73,6 +73,10 @@ void MainWindow::on_clearPushButton_clicked() {
   mRenderer->clear();
 }
 
+void MainWindow::on_resetViewPushButton_clicked() {
+  mRenderer->renderObjectManager()->resetViewMatrix();
+}
+
 void MainWindow::onOpenGlWidgetInitialized() const {
   mRenderer->start(mUI.openGLWidget->context());
   mUI.openGLWidget->update();

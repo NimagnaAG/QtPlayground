@@ -65,9 +65,11 @@ class RENDERING_API RenderObject : public QObject {
     updateModelMatrix();
     emit propertiesChanged();
   }
-  const float& scale() const { return mScale; }
-  void setScale(float scale) {
-    mScale = std::clamp(scale, 0.01f, 100.0f);  // prevent scale from being too small or too large
+  const QVector3D& scale() const { return mScale; }
+  void setScale(const QVector3D& scale) {
+    mScale = {
+        std::clamp(scale.x(), 0.01f, 100.0f), std::clamp(scale.y(), 0.01f, 100.0f),
+        std::clamp(scale.z(), 0.01f, 100.0f)};  // prevent scale from being too small or too large
     updateModelMatrix();
     emit propertiesChanged();
   }
@@ -87,7 +89,7 @@ class RENDERING_API RenderObject : public QObject {
  private:
   QVector3D mPosition = {0.0f, 0.0f, 0.0f};
   QVector3D mRotation = {0.0f, 0.0f, 0.0f};
-  float mScale = 1.0f;
+  QVector3D mScale = {1.0f, 1.0f, 1.0f};
   // the object's own model matrix defines the position, rotation, and scale of the object in the
   // world coordinate system.
   QMatrix4x4 mModelMatrix;

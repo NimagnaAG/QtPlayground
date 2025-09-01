@@ -235,7 +235,7 @@ void TextureRenderObject::draw(const std::shared_ptr<RenderData> renderData) {
   // prepare to set it)
   // to create the full model-view-projection matrix, we need to multiply the view projection with
   // the object's model matrix
-  const QMatrix4x4 mvp = renderData->projectionMatrix() * renderData->viewMatrix() * modelMatrix();
+  const auto mvp = renderData->projectionMatrix() * renderData->viewMatrix() * modelMatrix();
   // this is passed to the shader program's vertex shader to transform each vertex position into
   // camera view space
   mShaderProgram->setUniformValue(mWorldTransformationShaderPosition, mvp);
@@ -750,7 +750,7 @@ std::array<float, 6> TextureRenderObject::textureVertexPositions(const QSize& te
       static_cast<float>(textureSize.width()) / static_cast<float>(textureSize.height());
 
   // Attention: The full output corresponds is usually a 16:9 output
-  const auto outputSize = QSize(1080, 720);
+  const auto outputSize = QSize(1920, 1080);
   // In order to maintain the texture's aspect ratio, we have to calculate vertex positions
   // respecting both the texture aspect ratio _and_ the output aspect ratio.
   // E.g. for 16:9 textures, the vertices result in the full screen (-1/1). Thus, we multiply the

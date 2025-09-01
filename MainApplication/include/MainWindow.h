@@ -35,6 +35,7 @@ class MainWindow : public QMainWindow {
   void on_plyload_triggered();
   // button actions
   void on_clearPushButton_clicked();
+  void on_resetViewPushButton_clicked();
   // --- Callback from OpenGL window once initialized
   void onOpenGlWidgetInitialized() const;
 

@@ -55,9 +55,6 @@ void GltfRenderObject::initialize() {
     return;
   }
 
-  // initialize model matrix
-  setScale(0.5f);
-
   // load and compile shader
   setupShaderPrograms();
 

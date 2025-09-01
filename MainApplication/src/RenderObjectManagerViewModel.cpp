@@ -53,8 +53,12 @@ QVariant RenderObjectManagerViewModel::data(const QModelIndex& index, int role) 
             return object->position().y();
           case TableColumns::kPositionZ:
             return object->position().z();
-          case TableColumns::kScale:
-            return object->scale();
+          case TableColumns::kScaleX:
+            return object->scale().x();
+          case TableColumns::kScaleY:
+            return object->scale().y();
+          case TableColumns::kScaleZ:
+            return object->scale().z();
           case TableColumns::kRotationX:
             return object->rotation().x();
           case TableColumns::kRotationY:
@@ -81,8 +85,12 @@ QVariant RenderObjectManagerViewModel::headerData(int section, Qt::Orientation o
         return "Y";
       case TableColumns::kPositionZ:
         return "Z";
-      case TableColumns::kScale:
-        return "Scale";
+      case TableColumns::kScaleX:
+        return "Sx";
+      case TableColumns::kScaleY:
+        return "Sy";
+      case TableColumns::kScaleZ:
+        return "Sz";
       case TableColumns::kRotationX:
         return "Rx";
       case TableColumns::kRotationY:
@@ -103,6 +111,7 @@ bool RenderObjectManagerViewModel::setData(const QModelIndex& index, const QVari
   if (object) {
     auto position = object->position();
     auto rotation = object->rotation();
+    auto scale = object->scale();
     switch (role) {
       case Qt::EditRole: {
         switch (static_cast<TableColumns>(index.column())) {
@@ -124,8 +133,19 @@ bool RenderObjectManagerViewModel::setData(const QModelIndex& index, const QVari
             object->setPosition(position);
             return true;
           }
-          case TableColumns::kScale: {
-            object->setScale(value.toFloat());
+          case TableColumns::kScaleX: {
+            scale.setX(value.toFloat());
+            object->setScale(scale);
+            return true;
+          }
+          case TableColumns::kScaleY: {
+            scale.setY(value.toFloat());
+            object->setScale(scale);
+            return true;
+          }
+          case TableColumns::kScaleZ: {
+            scale.setZ(value.toFloat());
+            object->setScale(scale);
             return true;
           }
           case TableColumns::kRotationX: {
@@ -161,7 +181,9 @@ Qt::ItemFlags RenderObjectManagerViewModel::flags(const QModelIndex& index) cons
     case TableColumns::kPositionX:
     case TableColumns::kPositionY:
     case TableColumns::kPositionZ:
-    case TableColumns::kScale:
+    case TableColumns::kScaleX:
+    case TableColumns::kScaleY:
+    case TableColumns::kScaleZ:
     case TableColumns::kRotationX:
     case TableColumns::kRotationY:
     case TableColumns::kRotationZ:

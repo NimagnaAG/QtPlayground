@@ -158,7 +158,7 @@ void GeoGsRenderObject::setupShaderProgram() {
   mShaderFocalPosition = mShaderProgram->uniformLocation("uFocal");
   // Attention: viewport in offscreen rendering is fixed
   mShaderViewportLocation = mShaderProgram->uniformLocation("uViewport");
-  QSize viewportSize = QOpenGLContext::currentContext()->screen()->size();
+  const auto viewportSize = QOpenGLContext::currentContext()->screen()->size();
   mShaderProgram->setUniformValue(mShaderViewportLocation,
                                   QVector2D(viewportSize.width(), viewportSize.height()));
 }
@@ -231,45 +231,43 @@ nimagna::GeoGsRenderObject::SplatData GeoGsRenderObject::loadSplatFile(const QSt
   return result;
 }
 
-QPair<float, float> GeoGsRenderObject::calculateFocalLengths(float verticalFovDegrees, float width,
-                                                             float height) {
+float GeoGsRenderObject::calculateFocalLength(float verticalFovDegrees, float viewportWidth) {
   float fovYRad = qDegreesToRadians(verticalFovDegrees);
-  // Compute fy based on vertical FOV
-  float fy = width / (2.0f * qTan(fovYRad / 2.0f));
-
-  // Derive fx from fy and aspect ratio
-  float aspect = width / height;
-  float fx = fy;
-
-  return qMakePair(fx, fy);
+  return viewportWidth / (2.0f * qTan(fovYRad / 2.0f));
 }
 
 void GeoGsRenderObject::updateIfViewProjectionChanged(
     const std::shared_ptr<RenderData> renderData) {
-  const auto& viewProjectionMatrix = renderData->projectionMatrix() * renderData->viewMatrix();
-  if (viewProjectionMatrix == mLastViewProjectionMatrix) {
+  // SPDLOG_INFO("View matrix: {}, inverse {}", renderData->viewMatrix(),
+  //             renderData->viewMatrix().inverted());
+  auto proj = renderData->projectionMatrix();
+  const auto& mvp = proj * renderData->viewMatrix() * modelMatrix();
+  if (mvp == mLastMVP) {
     // do not update if the view-projection matrix has not changed
     return;
   }
-  mShaderProgram->bind();
 
-  // TODO: Should not change
-  QSize viewportSize = QOpenGLContext::currentContext()->screen()->size();
-  mShaderProgram->setUniformValue(mShaderViewportLocation,
-                                  QVector2D(viewportSize.width(), viewportSize.height()));
-
+  auto viewportSize = QOpenGLContext::currentContext()->screen()->size();
+  renderData->setViewport(viewportSize);
+  auto [fx, fy] = renderData->calculateFocalLengths();
   // calculate focal lengths based on the vertical field of view and viewport size
-  auto [fx, fy] = calculateFocalLengths(renderData->fieldOfViewAngle(),
-                                        static_cast<float>(viewportSize.width()),
-                                        static_cast<float>(viewportSize.height()));
+  // auto focalLength = calculateFocalLength(renderData->fieldOfViewAngle(),
+  // static_cast<float>(viewportSize.width()));
+  SPDLOG_INFO("Viewport size: {}, {}, FOV: {} -> Focal lengths: {}, {}", viewportSize.width(),
+              viewportSize.height(), renderData->fieldOfViewAngle(), fx, fy);
   mShaderProgram->setUniformValue(mShaderFocalPosition, QVector2D{fx, fy});
 
-  // update projection and view matrices in the shader
   mShaderProgram->setUniformValue(mShaderProjectionMatrixLocation, renderData->projectionMatrix());
-  mShaderProgram->setUniformValue(mShaderViewMatrixLocation, renderData->viewMatrix());
+  mFirstDraw = false;
 
-  // sort splats based on the new view-projection matrix and update the index buffer
-  sortSplatsAndUpdateIndexBufferObject(viewProjectionMatrix);
+  mShaderProgram->setUniformValue(mShaderViewMatrixLocation,
+                                  renderData->viewMatrix() * modelMatrix());
+
+  SPDLOG_INFO("projection {}, PROJ {}. view {}, model {}", renderData->projectionMatrix(),
+              renderData->getProjectionMatrix(fx, fy), renderData->viewMatrix(), modelMatrix());
+
+  // sort splats based on the new model-view-projection matrix and update the index buffer
+  sortSplatsAndUpdateIndexBufferObject(mvp);
 }
 
 void GeoGsRenderObject::sortSplatsAndUpdateIndexBufferObject(const QMatrix4x4& viewProj) {
@@ -337,7 +335,7 @@ void GeoGsRenderObject::sortSplatsAndUpdateIndexBufferObject(const QMatrix4x4& v
     indices.swap(temp_indices);
   }
 
-  mLastViewProjectionMatrix = viewProj;
+  mLastMVP = viewProj;
   // update indices
   mIBO.bind();
   mIBO.setUsagePattern(QOpenGLBuffer::DynamicDraw);

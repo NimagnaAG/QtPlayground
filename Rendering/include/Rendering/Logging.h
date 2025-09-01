@@ -131,8 +131,8 @@ struct fmt::formatter<QMatrix4x4> {
   auto format(const QMatrix4x4 &m, Context &ctx) {
     const auto *mdata = m.constData();
     return fmt::v8::format_to(ctx.out(),
-                              "[{:.2f}/{:.2f}/{:.2f}/{:.2f}] [{:.2f}/{:.2f}/{:.2f}/{:.2f}] "
-                              "[{:.2f}/{:.2f}/{:.2f}/{:.2f}] [{:.2f}/{:.2f}/{:.2f}/{:.2f}]",
+                              "\n[{:.2f}/{:.2f}/{:.2f}/{:.2f}]\n[{:.2f}/{:.2f}/{:.2f}/{:.2f}]\n"
+                              "[{:.2f}/{:.2f}/{:.2f}/{:.2f}]\n[{:.2f}/{:.2f}/{:.2f}/{:.2f}]",
                               mdata[0], mdata[1], mdata[2], mdata[3], mdata[4], mdata[5], mdata[6],
                               mdata[7], mdata[8], mdata[9], mdata[10], mdata[11], mdata[12],
                               mdata[13], mdata[14], mdata[15]);

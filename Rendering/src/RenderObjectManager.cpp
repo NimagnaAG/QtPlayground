@@ -13,12 +13,7 @@ namespace nimagna {
 
 RenderObjectManager::RenderObjectManager() {
   mCurrentRenderData = std::make_shared<RenderData>();
-  RenderData::ShotFraming3D framing;
-  // set initial camera position to (0, 0, 1) and look at (0, 0, 0) with a FOV angle of 90 degrees
-  framing.setPosition(QVector3D(0.0, 0.0, 1.0));
-  framing.setLookAtPoint(QVector3D(0.0, 0.0, 0.0));
-  framing.setFieldOfViewAngle(90);
-  mCurrentRenderData->setFraming3D(framing);
+  resetViewMatrix();
   mCurrentRenderData->setRenderMode(RenderData::RenderMode::Render3D);
 }
 
@@ -128,23 +123,21 @@ bool RenderObjectManager::render() {
   }
 
   // clear the frame- and depth buffer to render a new frame
-  /*   glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+  glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
   glDepthRange(0.0, 1.0);
-   glClearDepth(1.0f);
-   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-   // enabled depth testing and set depth function
-   glDepthMask(GL_TRUE);
-   glEnable(GL_DEPTH_TEST);
-   glDepthFunc(GL_LESS);
-   // enable blending for transparency
-   glEnable(GL_BLEND);
-   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  glClearDepth(1.0f);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  // enabled depth testing and set depth function
+  glDepthMask(GL_TRUE);
+  glEnable(GL_DEPTH_TEST);
+  glDepthFunc(GL_LESS);
+  // enable blending for transparency
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-  */
   // render objects only if there's render data for the projection and the list has more than one
   // object (i.e. storyboard + more) or the storyboard is the only item and has content
   if (mCurrentRenderData && (mRenderObjectsList.size() > 0)) {
-    mCurrentRenderData->setViewport(mOffscreenSurface->size());
     // get camera view and projection matrices
     for (const auto& renderObject : mRenderObjectsList) {
       // let the object draw itself by passing the camera view and projection matrices
@@ -219,7 +212,6 @@ std::shared_ptr<RenderObject> RenderObjectManager::createTextureObject(const QSt
 
 void RenderObjectManager::onOutputSettingsChanged() {
   tryMakeOpenGlContextCurrent(false);
-  mCurrentOutputResolution = QSize(1080, 720);
 
   // update render frame buffers (MSAA and texture), local storage and viewport
   QOpenGLFramebufferObjectFormat fboMultisamplingFormat;
@@ -239,6 +231,8 @@ void RenderObjectManager::onOutputSettingsChanged() {
   mRenderFramebuffer = std::make_unique<QOpenGLFramebufferObject>(
       mCurrentOutputResolution.width(), mCurrentOutputResolution.height(), fboDownsampledFormat);
   glViewport(0, 0, mCurrentOutputResolution.width(), mCurrentOutputResolution.height());
+  // const auto viewportSize = QOpenGLContext::currentContext()->screen()->size();
+  mCurrentRenderData->setViewport(mCurrentOutputResolution);
 }
 
 void RenderObjectManager::changeOpenGlDebugging(bool enabled) {
@@ -270,6 +264,16 @@ void RenderObjectManager::changeOpenGlDebugging(bool enabled) {
       mDebugLogger.reset(nullptr);
     }
   }
+}
+
+void RenderObjectManager::resetViewMatrix() {
+  // set initial camera position to (0, 0, 1) and look at (0, 0, 0) with a FOV angle of 90 degrees
+  QMatrix4x4 viewMatrix;
+  viewMatrix.lookAt(QVector3D(0.0, 0.0, 1.0), QVector3D(0.0, 0.0, 0.0), QVector3D(0, 1, 0));
+  mCurrentRenderData->setViewMatrix(viewMatrix);
+  RenderData::ShotFraming3D framing;
+  framing.setFieldOfViewAngle(90);
+  mCurrentRenderData->setFraming3D(framing);
 }
 
 void RenderObjectManager::onOpenGlDebugMessage(const QOpenGLDebugMessage& debugMessage) {

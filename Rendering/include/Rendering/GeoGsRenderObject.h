@@ -92,11 +92,12 @@ class RENDERING_API GeoGsRenderObject : public RenderObject, protected QOpenGLFu
   // the index buffer with the vertex indices for each triangle
   QOpenGLBuffer mIBO;
 
-  QMatrix4x4 mLastViewProjectionMatrix;
+  QMatrix4x4 mLastMVP;
   void updateIfViewProjectionChanged(const std::shared_ptr<RenderData> renderData);
-  QPair<float, float> calculateFocalLengths(float verticalFovDegrees, float width, float height);
+  float calculateFocalLength(float verticalFovDegrees, float viewportWidth);
   // sort splats and update index buffer
   void sortSplatsAndUpdateIndexBufferObject(const QMatrix4x4& viewProj);
+  bool mFirstDraw = true;
 };
 
 }  // namespace nimagna

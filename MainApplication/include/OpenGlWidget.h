@@ -38,6 +38,7 @@ class OpenGlWidget : public QOpenGLWidget, protected QOpenGLFunctions_4_0_Core {
   void initializeGL() override;
   // paint
   void paintGL() override;
+  void paintEvent(QPaintEvent* event) override;
 
   // resize
   void resizeGL(int w, int h) override;
@@ -69,6 +70,7 @@ class OpenGlWidget : public QOpenGLWidget, protected QOpenGLFunctions_4_0_Core {
   QRect mViewPort;
   RenderData::ShotFraming3D mOriginalTrackballFraming;
   std::shared_ptr<RenderData> mOrthographic2DFraming;
+  bool mDrawDebugInfo = true;
 };
 
 }  // namespace nimagna
