@@ -67,9 +67,15 @@ class RENDERING_API RenderObject : public QObject {
   }
   const QVector3D& scale() const { return mScale; }
   void setScale(const QVector3D& scale) {
-    mScale = {
-        std::clamp(scale.x(), 0.01f, 100.0f), std::clamp(scale.y(), 0.01f, 100.0f),
-        std::clamp(scale.z(), 0.01f, 100.0f)};  // prevent scale from being too small or too large
+    // prevent scale from being too small or too large but allow negative values
+    auto clamp = [](float value) {
+      if (value > 0) {
+        return std::clamp(value, 0.01f, 100.0f);
+      } else {
+        return std::clamp(value, -100.0f, -0.1f);
+      }
+    };
+    mScale = {clamp(scale.x()), clamp(scale.y()), clamp(scale.z())};
     updateModelMatrix();
     emit propertiesChanged();
   }

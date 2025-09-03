@@ -62,7 +62,7 @@ void OpenGlWidget::initializeGL() {
   initializeOpenGLFunctions();
   // initialize the texture render object with all the OpenGL stuff
   mTextureRenderObject->initialize();
-  mTextureRenderObject->setFlipVertically(true);
+  mTextureRenderObject->setFlipVertically(false);
   mTextureRenderObject->useExternalTexture(true);
   mTextureRenderObject->setFlipHorizontally(false);
 
@@ -302,7 +302,7 @@ void OpenGlWidget::mouseMoveEvent(QMouseEvent* event) {
     } else if (mLeftButtonDown) {
       float factor = 0.1f;
       inverseViewMatrix.rotate(factor * differenceX, {0, 1, 0});
-      inverseViewMatrix.rotate(-factor * differenceY, {1, 0, 0});
+      inverseViewMatrix.rotate(factor * differenceY, {1, 0, 0});
     }
     rom->currentRenderData()->setViewMatrix(inverseViewMatrix.inverted());
 

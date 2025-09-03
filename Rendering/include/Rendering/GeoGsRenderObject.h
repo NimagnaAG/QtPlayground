@@ -80,8 +80,8 @@ class RENDERING_API GeoGsRenderObject : public RenderObject, protected QOpenGLFu
   // the shader program
   std::unique_ptr<QOpenGLShaderProgram> mShaderProgram;
   // the locations of the view and projection matrices in the shader
-  int mShaderViewMatrixLocation, mShaderProjectionMatrixLocation;
-  int mShaderViewportLocation, mShaderFocalPosition;
+  int mViewMatrixShaderLocation, mProjectionMatrixShaderLocation;
+  int mViewportShaderLocation, mFocalShaderLocation;
 
   // initialize the shader program
   void setupShaderProgram();
@@ -92,12 +92,13 @@ class RENDERING_API GeoGsRenderObject : public RenderObject, protected QOpenGLFu
   // the index buffer with the vertex indices for each triangle
   QOpenGLBuffer mIBO;
 
-  QMatrix4x4 mLastMVP;
+  // check if the view or projection matrix changed since last draw to update matrices in shader and
+  // sort splats
   void updateIfViewProjectionChanged(const std::shared_ptr<RenderData> renderData);
-  float calculateFocalLength(float verticalFovDegrees, float viewportWidth);
   // sort splats and update index buffer
   void sortSplatsAndUpdateIndexBufferObject(const QMatrix4x4& viewProj);
-  bool mFirstDraw = true;
+
+  QMatrix4x4 mLastMVP;
 };
 
 }  // namespace nimagna

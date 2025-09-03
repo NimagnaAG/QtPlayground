@@ -96,6 +96,10 @@ class RENDERING_API RenderData {
   QSize viewport() const { return mViewport; }
 
   QPair<float, float> calculateFocalLengths() {
+    if (is2D()) {
+      // in 2D mode, we do not have focal lengths
+      return qMakePair(1.f, 1.f);
+    }
     float fovYRad = qDegreesToRadians(fieldOfViewAngle());
     // Compute fy based on vertical FOV
     float fy = viewport().width() / (2.0f * qTan(fovYRad / 2.0f));
@@ -106,13 +110,14 @@ class RENDERING_API RenderData {
 
     return qMakePair(fx, fy);
   }
+
+  // projection matrix for splat rendering
   QMatrix4x4 getProjectionMatrix(float fx, float fy) {
     QMatrix4x4 projection;
     projection.setColumn(0, {2 * fx / viewport().width(), 0, 0, 0});
     projection.setColumn(1, {0, -2 * fy / viewport().height(), 0, 0});
     projection.setColumn(2, {0, 0, mFarPlane / (mFarPlane - mNearPlane), 1});
     projection.setColumn(3, {0, 0, -(mFarPlane * mNearPlane) / (mFarPlane - mNearPlane), 0});
-
     return projection;
   }
 

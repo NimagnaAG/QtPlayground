@@ -49,7 +49,7 @@ class RenderObjectManagerViewModel : public QAbstractTableModel {
     kRotationY,
     kRotationZ,
   };
-  const int kColumnCount = 7;
+  const int kColumnCount = 9;
 
   std::shared_ptr<Renderer> mRenderer;
   std::shared_ptr<RenderObjectManager> mRenderObjectManager;
