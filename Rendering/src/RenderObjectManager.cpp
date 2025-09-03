@@ -122,18 +122,19 @@ bool RenderObjectManager::render() {
     mRenderFramebuffer->bind();
   }
 
+  // glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // all black
+
   // clear the frame- and depth buffer to render a new frame
-  // glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-  // glDepthRange(0.0, 1.0);
-  // glClearDepth(1.0f);
-  // glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  glDepthRange(0.0, 1.0);
+  glClearDepth(1.0f);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   //// enabled depth testing and set depth function
-  // glDepthMask(GL_TRUE);
-  // glEnable(GL_DEPTH_TEST);
-  // glDepthFunc(GL_LESS);
+  glDepthMask(GL_TRUE);
+  glEnable(GL_DEPTH_TEST);
+  glDepthFunc(GL_LESS);
+
   //// enable blending for transparency
-  // glEnable(GL_BLEND);
-  // glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  glEnable(GL_BLEND);
 
   // render objects only if there's render data for the projection and the list has more than one
   // object (i.e. storyboard + more) or the storyboard is the only item and has content

@@ -37,7 +37,7 @@ void GeoGsRenderObject::initialize() {
   initializeOpenGLFunctions();
 
   // flip vertically
-  setScale({1.f, -1.f, 1.f});
+  // setScale({1.f, -1.f, 1.f});
 
   // load file
   QString fileExtension = mGsLocation.split(".").last();
@@ -167,9 +167,7 @@ void GeoGsRenderObject::draw(const std::shared_ptr<RenderData> renderData) {
     SPDLOG_ERROR("Shader program is not available.");
     return;
   }
-
-  glClear(GL_COLOR_BUFFER_BIT);
-  glEnable(GL_BLEND);
+  glDisable(GL_DEPTH_TEST);
   glBlendFunc(GL_ONE_MINUS_DST_ALPHA, GL_ONE);
 
   mShaderProgram->bind();
