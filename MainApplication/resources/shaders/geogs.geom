@@ -54,7 +54,7 @@ void main() {
     mat3 Vrk = 4.0 * computeCov3D(rotation, scale);
 
     mat3 J = mat3(
-        uFocal.x / cam.z, 0., -(uFocal.x * cam.x) / (cam.z * cam.z),
+        -uFocal.x / cam.z, 0., (uFocal.x * cam.x) / (cam.z * cam.z),
         0., -uFocal.y / cam.z, (uFocal.y * cam.y) / (cam.z * cam.z),
         0., 0., 0.
     );

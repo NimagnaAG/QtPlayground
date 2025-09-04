@@ -269,9 +269,9 @@ void RenderObjectManager::changeOpenGlDebugging(bool enabled) {
 
 void RenderObjectManager::resetViewMatrix() {
   // set initial camera position to (0, 0, 1) and look at (0, 0, 0) with a FOV angle of 90 degrees
+  // note the up vector is (0, -1, 0) since the image origin is top-left
   QMatrix4x4 viewMatrix;
-  viewMatrix.lookAt(QVector3D(0.0, 0.0, 1.0), QVector3D(0.0, 0.0, 0.0), QVector3D(0, 1, 0));
-  // viewMatrix.lookAt(QVector3D(1.0, 0.0, 0.0), QVector3D(0.0, 0.0, 0.0), QVector3D(1, 1, 0));
+  viewMatrix.lookAt(QVector3D(0.0, 0.0, 1.0), QVector3D(0.0, 0.0, 0.0), QVector3D(0, -1, 0));
   mCurrentRenderData->setViewMatrix(viewMatrix);
   RenderData::ShotFraming3D framing;
   framing.setFieldOfViewAngle(90);

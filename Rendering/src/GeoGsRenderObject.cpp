@@ -227,11 +227,9 @@ nimagna::GeoGsRenderObject::SplatData GeoGsRenderObject::loadSplatFile(const QSt
 
 void GeoGsRenderObject::updateIfViewProjectionChanged(
     const std::shared_ptr<RenderData> renderData) {
-  // calculate focal lengths based on the vertical field of view and viewport size
-  auto [fx, fy] = renderData->calculateFocalLengths();
-  // get the projection matrix for the splat rendering
-  auto projectionMatrix = renderData->getProjectionMatrix(fx, fy);
-  auto viewMatrix = renderData->viewMatrix();
+  // get the projection and view matrices
+  const auto projectionMatrix = renderData->projectionMatrix();
+  const auto viewMatrix = renderData->viewMatrix();
   const auto& mvp = projectionMatrix * viewMatrix * modelMatrix();
   if (mvp == mLastMVP) {
     // do not update if the view-projection matrix has not changed
@@ -239,6 +237,8 @@ void GeoGsRenderObject::updateIfViewProjectionChanged(
   }
   mLastMVP = mvp;
 
+  // calculate focal lengths based on the vertical field of view and viewport size
+  auto [fx, fy] = renderData->calculateFocalLengths();
   // set the focal lengths, projection and view matrix in the shader
   mShaderProgram->setUniformValue(mFocalShaderLocation, QVector2D{fx, fy});
   mShaderProgram->setUniformValue(mProjectionMatrixShaderLocation, projectionMatrix);
