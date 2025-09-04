@@ -36,9 +36,6 @@ GeoGsRenderObject::~GeoGsRenderObject() {
 void GeoGsRenderObject::initialize() {
   initializeOpenGLFunctions();
 
-  // flip vertically
-  // setScale({1.f, -1.f, 1.f});
-
   // load file
   QString fileExtension = mGsLocation.split(".").last();
   if (fileExtension.contains("splat")) {
@@ -230,14 +227,9 @@ nimagna::GeoGsRenderObject::SplatData GeoGsRenderObject::loadSplatFile(const QSt
 
 void GeoGsRenderObject::updateIfViewProjectionChanged(
     const std::shared_ptr<RenderData> renderData) {
-  // SPDLOG_INFO("View matrix: {}, inverse {}", renderData->viewMatrix(),
-  //             renderData->viewMatrix().inverted());
-  auto viewportSize = QOpenGLContext::currentContext()->screen()->size();
-  renderData->setViewport(viewportSize);
-  // mShaderProgram->setUniformValue(mViewportShaderLocation, viewportSize);
-
+  // calculate focal lengths based on the vertical field of view and viewport size
   auto [fx, fy] = renderData->calculateFocalLengths();
-
+  // get the projection matrix for the splat rendering
   auto projectionMatrix = renderData->getProjectionMatrix(fx, fy);
   auto viewMatrix = renderData->viewMatrix();
   const auto& mvp = projectionMatrix * viewMatrix * modelMatrix();
@@ -247,27 +239,10 @@ void GeoGsRenderObject::updateIfViewProjectionChanged(
   }
   mLastMVP = mvp;
 
-  // calculate focal lengths based on the vertical field of view and viewport size
-
-  // auto [fx, fy] = renderData->calculateFocalLengths();
-  // mShaderProgram->setUniformValue(mShaderFocalPosition, QVector2D{fx, fy});
-  // SPDLOG_INFO("Viewport size: {}, {}, FOV: {} -> Focal lengths: {}, {}", viewportSize.width(),
-  //            viewportSize.height(), renderData->fieldOfViewAngle(), fx, fy);
-
-  // auto focalLength = calculateFocalLength(renderData->fieldOfViewAngle(),
-  //                                         static_cast<float>(viewportSize.width()));
-  // mShaderProgram->setUniformValue(mShaderFocalPosition, QVector2D{focalLength, focalLength});
-  // SPDLOG_INFO("Viewport size: {}, {}, FOV: {} -> Focal length: {} / {},{}", viewportSize.width(),
-  //             viewportSize.height(), renderData->fieldOfViewAngle(), focalLength, fx, fy);
-
   // set the focal lengths, projection and view matrix in the shader
   mShaderProgram->setUniformValue(mFocalShaderLocation, QVector2D{fx, fy});
   mShaderProgram->setUniformValue(mProjectionMatrixShaderLocation, projectionMatrix);
   mShaderProgram->setUniformValue(mViewMatrixShaderLocation, viewMatrix * modelMatrix());
-
-  // SPDLOG_INFO("projection {}, PROJ {}. view {}, model {}", renderData->projectionMatrix(),
-  //             renderData->getProjectionMatrix(focalLength, focalLength),
-  //             renderData->viewMatrix(), modelMatrix());
 
   // sort splats based on the new model-view-projection matrix and update the index buffer
   sortSplatsAndUpdateIndexBufferObject(mvp);

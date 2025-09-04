@@ -92,7 +92,10 @@ class RENDERING_API RenderData {
   const QMatrix4x4& viewMatrix() const { return mViewMatrix; }
   QMatrix4x4 projectionMatrix() const;
   float fieldOfViewAngle() { return mShotFraming3D.fieldOfViewAngle(); }
-  void setViewport(const QSize& viewport) { mViewport = viewport; };
+  void setViewport(const QSize& viewport) {
+    mViewport = viewport;
+    updateProjectionMatrix();
+  };
   QSize viewport() const { return mViewport; }
 
   QPair<float, float> calculateFocalLengths() {
@@ -126,6 +129,8 @@ class RENDERING_API RenderData {
   ShotFraming3D mShotFraming3D;
   QSize mViewport;
   QMatrix4x4 mViewMatrix;
+  void updateProjectionMatrix();
+  QMatrix4x4 mProjectionMatrix;
   const float mNearPlane = 0.2f;
   const float mFarPlane = 200.f;
 

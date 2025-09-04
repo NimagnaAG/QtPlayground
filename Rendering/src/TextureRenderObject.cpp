@@ -231,7 +231,7 @@ void TextureRenderObject::draw(const std::shared_ptr<RenderData> renderData) {
 
   glDisable(GL_CULL_FACE);
 
-  // once the draw method is callled, the view projection matrix is set (RenderObjectManager calls
+  // once the draw method is called, the view projection matrix is set (RenderObjectManager calls
   // prepare to set it)
   // to create the full model-view-projection matrix, we need to multiply the view projection with
   // the object's model matrix

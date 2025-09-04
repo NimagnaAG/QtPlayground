@@ -36,18 +36,22 @@ RenderData::RenderData(RenderData&& other) noexcept {
   mRenderMode = std::move(other.mRenderMode);
   mShotFraming2D = std::move(other.mShotFraming2D);
   mShotFraming3D = std::move(other.mShotFraming3D);
+  updateProjectionMatrix();
 }
 
 RenderData::RenderData(const RenderData& other)
     : mShotFraming2D(other.mShotFraming2D),
       mShotFraming3D(other.mShotFraming3D),
-      mRenderMode(other.mRenderMode) {}
+      mRenderMode(other.mRenderMode) {
+  updateProjectionMatrix();
+}
 
 RenderData& RenderData::operator=(const RenderData& other) {
   if (this == &other) return *this;
   mRenderMode = other.mRenderMode;
   mShotFraming2D = other.mShotFraming2D;
   mShotFraming3D = other.mShotFraming3D;
+  updateProjectionMatrix();
   return *this;
 }
 
@@ -56,40 +60,48 @@ RenderData& RenderData::operator=(RenderData&& other) noexcept {
   mRenderMode = std::move(other.mRenderMode);
   mShotFraming2D = std::move(other.mShotFraming2D);
   mShotFraming3D = std::move(other.mShotFraming3D);
+  updateProjectionMatrix();
   return *this;
 }
 
 void RenderData::setRenderMode(RenderMode renderMode) {
   mRenderMode = renderMode;
+  updateProjectionMatrix();
 }
 
 void RenderData::setFraming2D(const ShotFraming2D& framing2D) {
   mShotFraming2D = framing2D;
+  updateProjectionMatrix();
 }
 
 void RenderData::setFraming3D(const ShotFraming3D& framing3D) {
   mShotFraming3D = framing3D;
+  updateProjectionMatrix();
 }
 
 QMatrix4x4 RenderData::projectionMatrix() const {
-  QMatrix4x4 projectionMatrix;
+  return mProjectionMatrix;
+}
+
+void RenderData::updateProjectionMatrix() {
+  mProjectionMatrix = QMatrix4x4();
   const float aspectRatio = viewport().width() / static_cast<float>(viewport().height());
   if (is2D()) {
     // 2D projection
     const auto& framing = framing2D();
     if (aspectRatio > 1.f) {
-      projectionMatrix.ortho(framing.left() / aspectRatio, framing.right() / aspectRatio,
-                             framing.bottom(), framing.top(), -100 /*nearPlane*/, 100 /*farPlane*/);
+      mProjectionMatrix.ortho(framing.left() / aspectRatio, framing.right() / aspectRatio,
+                              framing.bottom(), framing.top(), -100 /*nearPlane*/,
+                              100 /*farPlane*/);
     } else {
-      projectionMatrix.ortho(framing.left(), framing.right(), framing.bottom() * aspectRatio,
-                             framing.top() * aspectRatio, -100 /*nearPlane*/, 100 /*farPlane*/);
+      mProjectionMatrix.ortho(framing.left(), framing.right(), framing.bottom() * aspectRatio,
+                              framing.top() * aspectRatio, -100 /*nearPlane*/, 100 /*farPlane*/);
     }
   } else {
     // 3D projection
     const auto& framing = framing3D();
-    projectionMatrix.perspective(framing.fieldOfViewAngle(), aspectRatio, mNearPlane, mFarPlane);
+    mProjectionMatrix.perspective(framing.fieldOfViewAngle(), aspectRatio, mNearPlane, mFarPlane);
   }
-  return projectionMatrix;
 }
 
 void RenderData::ShotFraming3D::setFieldOfViewAngle(float fieldOfViewAngle) {
