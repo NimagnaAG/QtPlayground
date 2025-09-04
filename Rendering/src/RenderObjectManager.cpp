@@ -122,7 +122,7 @@ bool RenderObjectManager::render() {
     mRenderFramebuffer->bind();
   }
 
-  // glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // all black
+  glClearColor(0.0f, 0.0f, 0.0f, 0.0f); // all black
 
   // clear the frame- and depth buffer to render a new frame
   glDepthRange(0.0, 1.0);
