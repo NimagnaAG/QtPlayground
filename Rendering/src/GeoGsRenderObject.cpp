@@ -84,7 +84,11 @@ void GeoGsRenderObject::initialize() {
   if (!mIBO.create()) {
     SPDLOG_ERROR("Failed to create IndexBufferObject");
   }
+  // IBO is dynamic because it gets updated when splats are sorted
   mIBO.setUsagePattern(QOpenGLBuffer::DynamicDraw);
+  // allocate index buffer for the amount of indices
+  mIBO.bind();
+  mIBO.allocate(int(mSplatData.positions.size() * sizeof(uint32_t)));
 
   int stride = sizeof(VertexData);
   mShaderProgram->enableAttributeArray(0);
@@ -315,9 +319,7 @@ void GeoGsRenderObject::sortSplatsAndUpdateIndexBufferObject(const QMatrix4x4& v
 
   // update indices
   mIBO.bind();
-  mIBO.setUsagePattern(QOpenGLBuffer::DynamicDraw);
-  mIBO.allocate(indices.data(), int(indices.size() * sizeof(uint32_t)));
-  // SPDLOG_INFO("Dist:{} < 0.015f ; dot:{} < 0.01f ", Dist, dot);
+  mIBO.write(0, indices.data(), int(indices.size() * sizeof(uint32_t)));
 }
 
 }  // namespace nimagna
