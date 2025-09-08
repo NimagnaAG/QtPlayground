@@ -115,7 +115,7 @@ bool RenderObjectManager::render() {
 
   // activate offscreen context with framebuffer as target
   tryMakeOpenGlContextCurrent(false);
-  const bool multisamplingRendering = false;
+  const bool multisamplingRendering = true;
   if (multisamplingRendering) {
     mMultisampleFramebuffer->bind();
   } else {
