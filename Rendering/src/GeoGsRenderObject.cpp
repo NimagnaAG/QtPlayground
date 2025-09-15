@@ -172,7 +172,7 @@ void GeoGsRenderObject::draw(const std::shared_ptr<RenderData> renderData) {
   glBlendFunc(GL_ONE_MINUS_DST_ALPHA, GL_ONE);
 
   mShaderProgram->bind();
-  updateIfViewProjectionChanged(renderData);
+  updateIfViewProjectionChanged(*renderData);
 
   mVAO.bind();
   mIBO.bind();
@@ -229,11 +229,10 @@ nimagna::GeoGsRenderObject::SplatData GeoGsRenderObject::loadSplatFile(const QSt
   return result;
 }
 
-void GeoGsRenderObject::updateIfViewProjectionChanged(
-    const std::shared_ptr<RenderData> renderData) {
+void GeoGsRenderObject::updateIfViewProjectionChanged(const RenderData& renderData) {
   // get the projection and view matrices
-  const auto projectionMatrix = renderData->projectionMatrix();
-  const auto viewMatrix = renderData->viewMatrix();
+  const auto projectionMatrix = renderData.projectionMatrix();
+  const auto viewMatrix = renderData.viewMatrix();
   const auto& mvp = projectionMatrix * viewMatrix * modelMatrix();
   if (mvp == mLastMVP) {
     // do not update if the view-projection matrix has not changed
@@ -242,9 +241,9 @@ void GeoGsRenderObject::updateIfViewProjectionChanged(
   mLastMVP = mvp;
 
   // calculate focal lengths based on the vertical field of view and viewport size
-  auto [fx, fy] = renderData->calculateFocalLengths();
+  auto focalPosition = calculateFocalPointPosition(renderData);
   // set the focal lengths, projection and view matrix in the shader
-  mShaderProgram->setUniformValue(mFocalShaderLocation, QVector2D{fx, fy});
+  mShaderProgram->setUniformValue(mFocalShaderLocation, focalPosition);
   mShaderProgram->setUniformValue(mProjectionMatrixShaderLocation, projectionMatrix);
   mShaderProgram->setUniformValue(mViewMatrixShaderLocation, viewMatrix * modelMatrix());
 
@@ -320,6 +319,19 @@ void GeoGsRenderObject::sortSplatsAndUpdateIndexBufferObject(const QMatrix4x4& v
   // update indices
   mIBO.bind();
   mIBO.write(0, indices.data(), int(indices.size() * sizeof(uint32_t)));
+}
+
+QVector2D GeoGsRenderObject::calculateFocalPointPosition(const RenderData& renderData) const {
+  if (renderData.is2D()) {
+    // in 2D mode, we do not have focal lengths
+    return QVector2D(1.f, 1.f);
+  }
+  // Note: projectionMatrix(0, 0) = 1.0 / qTan(fovYRad / 2.0f)
+  const auto projectionMatrix = renderData.projectionMatrix();
+  // Note: it is unclear, why 1280x720 has a factor of 1.0 while 1920x1080 has a factor of 2/3
+  const auto resolutionFactor = renderData.viewport().width() == 1280 ? 1.f : 2.f / 3.f;
+  return QVector2D(projectionMatrix(0, 0) * resolutionFactor * renderData.viewport().width(),
+                   projectionMatrix(1, 1) * resolutionFactor * renderData.viewport().height());
 }
 
 }  // namespace nimagna

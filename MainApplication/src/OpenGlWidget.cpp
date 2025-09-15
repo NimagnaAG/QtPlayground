@@ -139,20 +139,6 @@ void OpenGlWidget::paintEvent(QPaintEvent* event) {
     painter.drawText(
         10, projPos + 100,
         QString("Viewport: %1x%2").arg(rd->viewport().width()).arg(rd->viewport().height()));
-    auto [fx, fy] = rd->calculateFocalLengths();
-    painter.drawText(10, projPos + 140, QString("fx,fy: %1, %2").arg(fx).arg(fy));
-    const auto ppd = rd->getProjectionMatrix(fx, fy);
-    const auto pprojPos = projPos + 160;
-    painter.drawText(10, pprojPos, "GEO Proj");
-    v = rd->projectionMatrix().constData();
-    for (auto r = 0; r < 4; ++r) {
-      painter.drawText(10, pprojPos + 20 + r * 20,
-                       QString("%1 %2 %3 %4")
-                           .arg(ppd.constData()[r * 4 + 0], 0, 'f', 3)
-                           .arg(ppd.constData()[r * 4 + 1], 0, 'f', 3)
-                           .arg(ppd.constData()[r * 4 + 2], 0, 'f', 3)
-                           .arg(ppd.constData()[r * 4 + 3], 0, 'f', 3));
-    }
   }
 }
 

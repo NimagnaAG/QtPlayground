@@ -94,9 +94,10 @@ class RENDERING_API GeoGsRenderObject : public RenderObject, protected QOpenGLFu
 
   // check if the view or projection matrix changed since last draw to update matrices in shader and
   // sort splats
-  void updateIfViewProjectionChanged(const std::shared_ptr<RenderData> renderData);
+  void updateIfViewProjectionChanged(const RenderData& renderData);
   // sort splats and update index buffer
   void sortSplatsAndUpdateIndexBufferObject(const QMatrix4x4& viewProj);
+  QVector2D calculateFocalPointPosition(const RenderData& renderData) const;
 
   QMatrix4x4 mLastMVP;
 };
