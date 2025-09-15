@@ -51,15 +51,15 @@ void main() {
         return;
     }
 
-    mat3 Vrk = 4.0 * computeCov3D(rotation, scale);
-
+    float s= 1.0 / (cam.z * cam.z);
     mat3 J = mat3(
-        -uFocal.x / cam.z, 0., (uFocal.x * cam.x) / (cam.z * cam.z),
-        0., -uFocal.y / cam.z, (uFocal.y * cam.y) / (cam.z * cam.z),
+        -uFocal.x / cam.z, 0., (uFocal.x * cam.x) * s,
+        0., -uFocal.y / cam.z, (uFocal.y * cam.y) * s,
         0., 0., 0.
     );
 
     mat3 T = transpose(mat3(uView)) * J;
+    mat3 Vrk = 4.0 * computeCov3D(rotation, scale);
     mat3 cov2d = transpose(T) * Vrk * T;
 
     float mid      = (cov2d[0][0] + cov2d[1][1]) * 0.5;
