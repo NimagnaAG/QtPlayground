@@ -79,6 +79,11 @@ class RENDERING_API RenderObject : public QObject {
     updateModelMatrix();
     emit propertiesChanged();
   }
+
+  void enableDepthRendering(bool enable) {
+    mRenderDepth = enable;
+    emit propertiesChanged();
+  }
   // check if initialized
   bool isInitialized() const;
   bool readyForRendering() const { return mIsReadyForRendering; }
@@ -91,6 +96,8 @@ class RENDERING_API RenderObject : public QObject {
  protected:
   // flag indicating if that render object is ready for rendering
   bool mIsReadyForRendering = true;
+  // render depth flag
+  bool mRenderDepth = false;
 
  private:
   QVector3D mPosition = {0.0f, 0.0f, 0.0f};

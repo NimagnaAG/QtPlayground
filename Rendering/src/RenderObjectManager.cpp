@@ -267,6 +267,12 @@ void RenderObjectManager::changeOpenGlDebugging(bool enabled) {
   }
 }
 
+void RenderObjectManager::toggleRenderDepth(bool enabled) {
+  for (auto& ro : mRenderObjectsList) {
+    ro->enableDepthRendering(enabled);
+  }
+}
+
 void RenderObjectManager::resetViewMatrix() {
   // set initial camera position to (0, 0, 1) and look at (0, 0, 0) with a FOV angle of 90 degrees
   // note the up vector is (0, -1, 0) since the image origin is top-left

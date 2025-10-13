@@ -106,7 +106,7 @@ class RENDERING_API RenderData {
   void updateProjectionMatrix();
   QMatrix4x4 mProjectionMatrix;
   const float mNearPlane = 0.2f;
-  const float mFarPlane = 200.f;
+  const float mFarPlane = 100.f;
 
  private:
   RenderMode mRenderMode = RenderMode::Render2D;

@@ -33,6 +33,8 @@ class MainWindow : public QMainWindow {
   void on_test_triggered();
   void on_gsload_triggered();
   void on_plyload_triggered();
+  // View menu
+  void on_actionDepth_toggled(bool enabled);
   // button actions
   void on_clearPushButton_clicked();
   void on_resetViewPushButton_clicked();

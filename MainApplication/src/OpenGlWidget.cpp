@@ -13,6 +13,7 @@ OpenGlWidget::OpenGlWidget(QWidget* parent /*= nullptr*/, Qt::WindowFlags f /*= 
     : QOpenGLWidget(parent, f) {
   mTextureRenderObject =
       std::make_unique<TextureRenderObject>(TextureRenderObject::kDefaultTextureTarget);
+  mTextureRenderObject->setEnableDepthTest(false);
   QSurfaceFormat format;
   format.setRenderableType(QSurfaceFormat::OpenGL);
   format.setProfile(QSurfaceFormat::CoreProfile);
@@ -277,8 +278,9 @@ void OpenGlWidget::mouseMoveEvent(QMouseEvent* event) {
   const auto& renderData = rom->currentRenderData();
   event->ignore();
   if (mTrackballEnabled && renderData && renderData->is3D()) {
-    float differenceX = (event->globalPosition().x() - mLastMousePosition.x());
-    float differenceY = (event->globalPosition().y() - mLastMousePosition.y());
+    const auto globalPosition = event->globalPosition();
+    float differenceX = (globalPosition.x() - mLastMousePosition.x());
+    float differenceY = (globalPosition.y() - mLastMousePosition.y());
 
     auto viewMatrix = rom->currentRenderData()->viewMatrix();
     auto inverseViewMatrix = viewMatrix.inverted();
@@ -286,13 +288,15 @@ void OpenGlWidget::mouseMoveEvent(QMouseEvent* event) {
       float factor = 0.025f;
       inverseViewMatrix.translate(-factor * differenceX, -factor * differenceY, 0);
     } else if (mLeftButtonDown) {
+
       float factor = 0.1f;
-      inverseViewMatrix.rotate(factor * differenceX, {0, 1, 0});
-      inverseViewMatrix.rotate(factor * differenceY, {1, 0, 0});
+      QQuaternion quat =
+          QQuaternion::fromEulerAngles({factor * differenceY, factor * differenceX, 0});
+      inverseViewMatrix.rotate(quat);
     }
     rom->currentRenderData()->setViewMatrix(inverseViewMatrix.inverted());
 
-    mLastMousePosition = event->globalPosition().toPoint();
+    mLastMousePosition = globalPosition.toPoint();
     updateRendering();
     event->accept();
   }

@@ -69,8 +69,13 @@ void MainWindow::on_plyload_triggered() {
   }
 }
 
+void MainWindow::on_actionDepth_toggled(bool enabled) {
+  mRenderer->renderObjectManager()->toggleRenderDepth(enabled);
+}
+
 void MainWindow::on_clearPushButton_clicked() {
   mRenderer->clear();
+  mUI.actionDepth->setChecked(false);
 }
 
 void MainWindow::on_resetViewPushButton_clicked() {
@@ -80,6 +85,7 @@ void MainWindow::on_resetViewPushButton_clicked() {
 void MainWindow::onOpenGlWidgetInitialized() const {
   mRenderer->start(mUI.openGLWidget->context());
   mUI.openGLWidget->update();
+  mUI.actionDepth->setChecked(false);
   SPDLOG_INFO("ainWindow::onOpenGlWidgetInitialized() ");
 }
 

@@ -168,10 +168,12 @@ void GeoGsRenderObject::draw(const std::shared_ptr<RenderData> renderData) {
     SPDLOG_ERROR("Shader program is not available.");
     return;
   }
-  glDisable(GL_DEPTH_TEST);
+  glEnable(GL_DEPTH_TEST);
+  glDepthFunc(GL_ALWAYS);
   glBlendFunc(GL_ONE_MINUS_DST_ALPHA, GL_ONE);
 
   mShaderProgram->bind();
+  mShaderProgram->setUniformValue("renderDepth", mRenderDepth);
   updateIfViewProjectionChanged(*renderData);
 
   mVAO.bind();
@@ -229,7 +231,8 @@ nimagna::GeoGsRenderObject::SplatData GeoGsRenderObject::loadSplatFile(const QSt
   return result;
 }
 
-void GeoGsRenderObject::updateIfViewProjectionChanged(const RenderData& renderData) {
+void GeoGsRenderObject::updateIfViewProjectionChanged(
+    const RenderData& renderData) {
   // get the projection and view matrices
   const auto projectionMatrix = renderData.projectionMatrix();
   const auto viewMatrix = renderData.viewMatrix();

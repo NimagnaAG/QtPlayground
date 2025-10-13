@@ -93,6 +93,10 @@ class RENDERING_API TextureRenderObject : public RenderObject, protected QOpenGL
   // uploadVertexData after changing the vertex data
   void setVertexPosition(int vertexId, int index, float value);
 
+  // flags for depth test and rendering depth as gray value
+  void setEnableDepthTest(bool enableDepthTest) { mEnableDepthTest = enableDepthTest; }
+  void setRenderDepth(bool renderDepth) { mRenderDepth = renderDepth; }
+
  protected:
   // the vertex shader code
   static const inline QString mVertexShaderFile = ":/resources/shaders/texture.vert";
@@ -172,6 +176,8 @@ class RENDERING_API TextureRenderObject : public RenderObject, protected QOpenGL
   bool mCameraMaskBlurring = false;
   // alpha value for transparency
   float mAlpha = 1.0f;
+  // enable rendering with depth test (only for render objects, not for the output in QOpenGLWidget)
+  bool mEnableDepthTest = true;
 
   // texture units for color and mask texture
   static inline const GLint mColorTextureUnit = 2;

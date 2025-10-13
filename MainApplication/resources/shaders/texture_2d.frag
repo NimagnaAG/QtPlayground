@@ -19,6 +19,7 @@ uniform sampler2D maskTexture;			        // the rectangular mask texture (key)
 uniform bool useMaskTexture;                    // use the separate mask texture instead of the image's alpha channel
 uniform bool swapRGB;                           // swap RGB to BGR (or vice versa)
 uniform float alphaTransparency;                // alpha transparency multiplied on top
+uniform bool renderDepth;
 
 // post processing
 uniform bool doBlurring;                        // apply blurring or not on the alpha channel
@@ -80,4 +81,13 @@ void main() {
 
   // apply alpha transparency
   finalColor.a = finalColor.a * alphaTransparency;
+
+  if (renderDepth) {
+    float depth_ndc = gl_FragCoord.z;
+    const float u_near = 0.2; // near plane
+    const float u_far = 10.0; // near plane
+    float linear_depth = (2.0 * u_near) / (u_far + u_near - depth_ndc * (u_far - u_near));
+    float gray = 1.0 - linear_depth;
+    finalColor = vec4(gray, gray, gray, finalColor.a); 
+  }
 }

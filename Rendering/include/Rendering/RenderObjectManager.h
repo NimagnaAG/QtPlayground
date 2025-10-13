@@ -87,6 +87,8 @@ class RENDERING_API RenderObjectManager final : public QObject {
   // the ordered list of all render objects
   RenderObjectList mRenderObjectsList;
 
+  // methods to control rendering from UI
+  void toggleRenderDepth(bool enabled);
   void resetViewMatrix();
 
  signals:

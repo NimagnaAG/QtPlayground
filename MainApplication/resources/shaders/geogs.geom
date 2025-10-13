@@ -83,7 +83,8 @@ void main() {
 
     for (int i = 0; i < 4; i++) {
         gPosition = quad[i];
-        gl_Position = vec4(vCenter + (quad[i].x * majorAxis + quad[i].y * minorAxis) / uViewport, 0.0, 1.0);
+        // Approximate depth as the distance from the camera to the center of the ellipse
+        gl_Position = vec4(vCenter + (quad[i].x * majorAxis + quad[i].y * minorAxis) / uViewport, pos2d.z/pos2d.w, 1.0);
         EmitVertex();
     }
 
