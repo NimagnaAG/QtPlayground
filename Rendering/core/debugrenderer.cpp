@@ -4,25 +4,18 @@
 */
 
 #include "debugrenderer.h"
-
-#ifdef __ANDROID__
-#include <EGL/egl.h>
-#include <EGL/eglext.h>
-#include <GLES3/gl3.h>
-#include <GLES3/gl3ext.h>
-#else
-#include <GL/glew.h>
+ 
 #define GL_GLEXT_PROTOTYPES 1
-#include <SDL2/SDL_opengl.h>
-#include <SDL2/SDL_opengl_glext.h>
-#endif
-
 #include <memory>
 #include <vector>
-
-#include "log.h"
+#include <QtGui/QOpenGLContext>
+#include <QtOpenGL/QOpenGLBuffer>
+#include <QtOpenGL/QOpenGLFunctions_4_0_Core>
+#include <QtOpenGL/QOpenGLShaderProgram>
+#include <QtOpenGL/QOpenGLTexture>
+#include <QtOpenGL/QOpenGLVertexArrayObject>
 #include "util.h"
-#include "program.h"
+//#include "program.h"
 
 DebugRenderer::DebugRenderer()
 {
@@ -31,10 +24,15 @@ DebugRenderer::DebugRenderer()
 
 bool DebugRenderer::Init()
 {
-    ddProg = std::make_shared<Program>();
-    if (!ddProg->LoadVertFrag("shader/debugdraw_vert.glsl", "shader/debugdraw_frag.glsl"))
-    {
-        Log::E("Error loading DebugRenderer shader!\n");
+
+    //ddProg = std::make_shared<Program>();
+     ddProg  = std::make_unique<QOpenGLShaderProgram>();
+    if (!ddProg->addCacheableShaderFromSourceFile(QOpenGLShader::Vertex, ":/resources/shaders/debugdraw_vert.glsl")){
+        printf("Error loading DebugRenderer shader!\n");
+        return false;
+    }
+    if (!ddProg->addCacheableShaderFromSourceFile(QOpenGLShader::Fragment, ":/resources/shaders/debugdraw_frag.glsl")){
+        printf("Error loading DebugRenderer shader!\n");
         return false;
     }
     return true;
@@ -66,11 +64,24 @@ void DebugRenderer::Transform(const glm::mat4& m, float axisLen)
 void DebugRenderer::Render(const glm::mat4& cameraMat, const glm::mat4& projMat,
                            const glm::vec4& viewport, const glm::vec2& nearFar)
 {
-    ddProg->Bind();
+    ddProg->bind();
     glm::mat4 modelViewProjMat = projMat * glm::inverse(cameraMat);
-    ddProg->SetUniform("modelViewProjMat", modelViewProjMat);
-    ddProg->SetAttrib("position", linePositionVec.data());
-    ddProg->SetAttrib("color", lineColorVec.data());
+    QMatrix4x4 qModelViewProjMat(&modelViewProjMat[0][0]);
+    ddProg->setUniformValue("modelViewProjMat", qModelViewProjMat);
+    //ddProg->SetAttrib("position", linePositionVec.data());
+    //ddProg->SetAttrib("color", lineColorVec.data());
+
+    int posLoc=ddProg->attributeLocation("position");
+    constexpr int stride = sizeof(glm::vec3);
+    glVertexAttribPointer(posLoc, 3, GL_FLOAT, GL_FALSE, (GLsizei)stride, linePositionVec.data());
+    // Define the stride value based on the size of glm::vec3 (3 floats per vertex)
+
+    glEnableVertexAttribArray(posLoc);
+
+    int colorLoc = ddProg->attributeLocation("color");
+    glVertexAttribPointer(colorLoc, 3, GL_FLOAT, GL_FALSE, (GLsizei)stride, lineColorVec.data());
+    glEnableVertexAttribArray(colorLoc);
+
     glDrawArrays(GL_LINES, 0, (GLsizei)linePositionVec.size());
 }
 

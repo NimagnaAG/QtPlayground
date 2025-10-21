@@ -19,7 +19,7 @@ if(MSVC)
 endif()
 source_group("DLL" FILES ${DLL})
 
-set(Header_Files
+set(Header_Files 
     "include/Rendering/Logging.h"
     "include/Rendering/Renderer.h"
     "include/Rendering/RenderObject.h"
@@ -34,10 +34,22 @@ set(Header_Files
     "include/Rendering/GsRenderObject.h"
     "include/Rendering/GeoGsRenderObject.h"
     "include/Rendering/PlyRenderObject.h"
+    "include/Rendering/pointcloud.h"
+    "include/Rendering/gaussiancloud.h"
+    "include/Rendering/splatrenderer.h" 
+    "include/Rendering/radix_sort.hpp" 
+    "include/Rendering/ply.h"
+    "core/debugrenderer.h"
+    "core/framebuffer.h"
+    "core/image.h" 
+    "core/texture.h"
+    "core/util.h" 
+    "core/binaryattribute.h"
+    "core/vertexbuffer.h"
 )
 source_group("Header Files" FILES ${Header_Files})
 
-set(Source_Files
+set(Source_Files 
     "src/Renderer.cpp"
     "src/Logging.cpp"
     "src/RenderObject.cpp"
@@ -48,7 +60,17 @@ set(Source_Files
     "src/GeoGsRenderObject.cpp" 
     "src/GltfRenderObject.cpp"
     "src/PlyRenderObject.cpp"
-
+    "src/pointcloud.cpp"
+    "src/gaussiancloud.cpp" 
+    "src/splatrenderer.cpp"   
+    "src/ply.cpp"
+    "core/debugrenderer.cpp"
+    "core/framebuffer.cpp"
+    "core/image.cpp" 
+    "core/texture.cpp"
+    "core/util.cpp" 
+    "core/binaryattribute.cpp"
+    "core/vertexbuffer.cpp"
 )
 source_group("Source Files" FILES ${Source_Files})
 
@@ -80,10 +102,19 @@ find_package(Qt6
         Multimedia 
         MultimediaWidgets 
         OpenGL
+        Gui
+        Widgets
     REQUIRED
 )
-find_package(Spdlog REQUIRED)
+#set(ZLIB_INCLUDE_DIR "C:/Qt/6.8.0/Src/qtbase/src/3rdparty/zlib") 
 
+#set(PNG_PNG_INCLUDE_DIR "C:/Qt/6.8.0/Src/qtbase/src/3rdparty/libpng")
+#set(PNG_LIBRARY "C:/Qt/6.8.0/msvc2022_64/lib/Qt6BundledLibpng.lib")
+
+#find_package(ZLIB REQUIRED)
+#find_package(PNG REQUIRED)
+find_package(Spdlog REQUIRED)
+find_package(Eigen3 REQUIRED)
 ################################################################################
 # Public: include directories
 ################################################################################
@@ -122,6 +153,7 @@ set(LIBRARY_DEPENDENCIES
     PRIVATE Qt::MultimediaWidgets
     PRIVATE Qt::OpenGL
     PRIVATE NimagnaExtern::Spdlog
+    PRIVATE Eigen3::Eigen  
 )
 target_compile_definitions(${PROJECT_NAME} 
     PRIVATE ${NIMAGNA_COMPILE_DEFINITIONS}

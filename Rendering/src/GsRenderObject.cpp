@@ -60,34 +60,19 @@ std::vector<unsigned char> GsRenderObject::readFromFile(const std::filesystem::p
 void GsRenderObject::LoadSplatGs(const QString& location) {
   SPDLOG_INFO("in LoadSplatGs");
   // Clear previous data
-  std::vector<unsigned char> data = readFromFile(location.toStdString());
-
+  std::vector<unsigned char> data = readFromFile(location.toStdString()); 
   // resize data folowing the vertexCount
-  vertexCount = static_cast<int>(data.size() / rowLength);
-
-  depthIndex.resize(vertexCount + 1);
-
+  vertexCount = static_cast<int>(data.size() / rowLength); 
+  depthIndex.resize(vertexCount + 1); 
   texheight = std::ceil((float)(2 * vertexCount) / (float)texwidth);  // Set to your desired height
   m_data = std::make_unique<SplatData>(data);
-  initializeGL();
-
-  isDataReady = true;
-
+  initializeGL(); 
+  isDataReady = true; 
   RenderObject::initialize();
 }
 
 void GsRenderObject::LoadAnimateGs(const QString& location) {}
-
-//
-// void GsRenderObject::viewChanged() {
-//    QOpenGLExtraFunctions* f = QOpenGLContext::currentContext()->extraFunctions();
-//
-//  // fps calculations (from paintGL)
-//  f->glUniformMatrix4fv(m_viewLoc, 1, false, viewMatrix.data_handle());
-//  f->glClear(GL_COLOR_BUFFER_BIT);
-//  QOpenGLContext::currentContext()->extraFunctions()->glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4,
-//                                                                            vertexCount);
-//}
+ 
 void GsRenderObject::sortByDepth(QVector3D cameraPosition) {
   int maxDepth = std::numeric_limits<int>::min();
   int minDepth = std::numeric_limits<int>::max();
@@ -121,42 +106,22 @@ void GsRenderObject::sortByDepth(QVector3D cameraPosition) {
 
   for (int i = 0; i < vertexCount; i++) {
     depthIndex[starts0[sizeList[i]]++] = i;
-  }
-  setDepthIndex(depthIndex);
+  } 
+  glBindBuffer(GL_ARRAY_BUFFER, m_indexBuffer.bufferId());
+  glBufferData(GL_ARRAY_BUFFER, depthIndex.size() * 4, depthIndex.data(), GL_DYNAMIC_DRAW);
+  SPDLOG_INFO("setDepthIndex done");
 }
-
-// void GsRenderObject::resizeGL(int w, int h) {
-//   QOpenGLExtraFunctions* f = QOpenGLContext::currentContext()->extraFunctions();
-//   GLfloat tabFloat[] = {static_cast<GLfloat>(focalWidth), static_cast<GLfloat>(focalHeight)};
-//   f->glUniform2fv(m_focalLoc, 1, tabFloat);
-//   m_projectionMatrix = getProjectionMatrix(focalWidth, focalHeight, w, h);
-//   //GLfloat innerTab[] = {static_cast<GLfloat>(w), static_cast<GLfloat>(h)};
-//   //f->glUniform2fv(m_viewPortLoc, 1, mViewProjectionMatrix.data());
-//   f->glViewport(0, 0, w, h);
-//   f->glUniformMatrix4fv(m_projMatrixLoc, 1, false, m_projectionMatrix.data());
-//   SPDLOG_INFO("GsRenderObject resizeGL done ");
-// }
-
-void GsRenderObject::initializeGL() {
-  // QOpenGLDebugLogger* logger = new QOpenGLDebugLogger(this);
-  // connect(logger, &QOpenGLDebugLogger::messageLogged, [&](const QOpenGLDebugMessage&
-  // debugMessage) { qCritical() << debugMessage; }); logger->initialize(); // initializes in
-  // the current context, i.e. ctx logger->startLogging(QOpenGLDebugLogger::SynchronousLogging);
-
-  QOpenGLExtraFunctions* f = QOpenGLContext::currentContext()->extraFunctions();
-  //  m_program.addShaderFromSourceCode(QOpenGLShader::Vertex, ShaderSource::vertex);
-  //  m_program.addShaderFromSourceCode(QOpenGLShader::Fragment, ShaderSource::fragment);
-  m_program.addCacheableShaderFromSourceFile(QOpenGLShader::Vertex,
-                                             ":/resources/shaders/AnimateGS.vert");
-  m_program.addCacheableShaderFromSourceFile(QOpenGLShader::Fragment,
-                                             ":/resources/shaders/AnimateGS.frag");
+ 
+void GsRenderObject::initializeGL() {  
+  m_program.addCacheableShaderFromSourceFile(QOpenGLShader::Vertex, ":/resources/shaders/AnimateGS.vert");
+  m_program.addCacheableShaderFromSourceFile(QOpenGLShader::Fragment, ":/resources/shaders/AnimateGS.frag");
   m_program.link();
   m_program.bind();
   // Create a VAO. Not strictly required for ES 3, but it is for plain OpenGL.
   if (m_vao.create()) m_vao.bind();
-  f->glDisable(GL_DEPTH_TEST);  // Disable depth testing
-  f->glEnable(GL_BLEND);
-  f->glBlendFuncSeparate(GL_ONE_MINUS_DST_ALPHA, GL_ONE, GL_ONE_MINUS_DST_ALPHA, GL_ONE);
+  glDisable(GL_DEPTH_TEST);  // Disable depth testing
+  glEnable(GL_BLEND);
+  glBlendFuncSeparate(GL_ONE_MINUS_DST_ALPHA, GL_ONE, GL_ONE_MINUS_DST_ALPHA, GL_ONE);
   m_projMatrixLoc = m_program.uniformLocation("projection");
   m_viewPortLoc = m_program.uniformLocation("viewport");
   m_focalLoc = m_program.uniformLocation("focal");
@@ -164,21 +129,21 @@ void GsRenderObject::initializeGL() {
   // positions
   const std::array<float, 8> triangleVertices = {-2, -2, 2, -2, 2, 2, -2, 2};
   m_vertexBuffer.create();
-  f->glBindBuffer(GL_ARRAY_BUFFER, m_vertexBuffer.bufferId());
-  f->glBufferData(GL_ARRAY_BUFFER, 8 * 4, triangleVertices.data(), GL_STATIC_DRAW);
+  glBindBuffer(GL_ARRAY_BUFFER, m_vertexBuffer.bufferId());
+  glBufferData(GL_ARRAY_BUFFER, 8 * 4, triangleVertices.data(), GL_STATIC_DRAW);
   const int a_position = m_program.attributeLocation("position");
-  f->glEnableVertexAttribArray(a_position);
-  f->glBindBuffer(GL_ARRAY_BUFFER, m_vertexBuffer.bufferId());
-  f->glVertexAttribPointer(a_position, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
-  f->glBindTexture(GL_TEXTURE_2D, m_texture.textureId());
+  glEnableVertexAttribArray(a_position);
+  glBindBuffer(GL_ARRAY_BUFFER, m_vertexBuffer.bufferId());
+  glVertexAttribPointer(a_position, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
+  glBindTexture(GL_TEXTURE_2D, m_texture.textureId());
   auto u_textureLocation = m_program.uniformLocation("u_texture");
-  f->glUniform1i(u_textureLocation, 0);
+  glUniform1i(u_textureLocation, 0);
   m_indexBuffer.create();
   const int a_index = m_program.attributeLocation("index");
-  f->glEnableVertexAttribArray(a_index);
-  f->glBindBuffer(GL_ARRAY_BUFFER, m_indexBuffer.bufferId());
-  f->glVertexAttribIPointer(a_index, 1, GL_INT, false, 0);
-  f->glVertexAttribDivisor(a_index, 1);
+  glEnableVertexAttribArray(a_index);
+  glBindBuffer(GL_ARRAY_BUFFER, m_indexBuffer.bufferId());
+  glVertexAttribIPointer(a_index, 1, GL_INT, false, 0);
+  glVertexAttribDivisor(a_index, 1);
 }
 
 void GsRenderObject::draw(const QMatrix4x4& viewMatrix, const QMatrix4x4& projectionMatrix) {
@@ -230,27 +195,19 @@ void GsRenderObject::draw(const QMatrix4x4& viewMatrix, const QMatrix4x4& projec
 
 void GsRenderObject::setTextureData(const std::vector<unsigned int>& texdata, int texwidth,
                                     int texheight) {
-  QOpenGLExtraFunctions* f = QOpenGLContext::currentContext()->extraFunctions();
-  f->glBindTexture(GL_TEXTURE_2D, m_texture.textureId());
-  f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glBindTexture(GL_TEXTURE_2D, m_texture.textureId());
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-  f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-  f->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32UI, texwidth, texheight, 0, GL_RGBA_INTEGER,
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32UI, texwidth, texheight, 0, GL_RGBA_INTEGER,
                   GL_UNSIGNED_INT, texdata.data());
-  f->glActiveTexture(GL_TEXTURE0);
-  f->glBindTexture(GL_TEXTURE_2D, m_texture.textureId());
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, m_texture.textureId());
 }
-
-void GsRenderObject::setDepthIndex(const std::vector<unsigned int>& depthIndex) {
-  QOpenGLExtraFunctions* f = QOpenGLContext::currentContext()->extraFunctions();
-  f->glBindBuffer(GL_ARRAY_BUFFER, m_indexBuffer.bufferId());
-  f->glBufferData(GL_ARRAY_BUFFER, depthIndex.size() * 4, depthIndex.data(), GL_DYNAMIC_DRAW);
-  SPDLOG_INFO("setDepthIndex done");
-}
-
+ 
 
 int GsRenderObject::floatToHalf(float val) {
   unsigned int f;

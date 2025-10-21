@@ -5,6 +5,10 @@
 
 #pragma once
 
+#include <QtOpenGL/QOpenGLFunctions_4_0_Core> // Ensure this is included
+#include <QOpenGLContext> // Include this for QOpenGLContext
+#include "Rendering/pch.h"
+#include "Rendering/Rendering.h"
 #include <stdint.h>
 
 struct Image;

@@ -13,5 +13,22 @@
 		<file>resources/shaders/geogs.vert</file>
 		<file>resources/shaders/geogs.frag</file>
 		<file>resources/shaders/geogs.geom</file>
+		<file>resources/shaders/desktop_vert.glsl</file>		
+		<file>resources/shaders/desktop_frag.glsl</file>
+		<file>resources/shaders/debugdraw_frag.glsl</file>
+		<file>resources/shaders/debugdraw_vert.glsl</file>
+		<file>resources/shaders/AnimateGSpython.frag</file>
+		<file>resources/shaders/carpet_frag.glsl</file>
+		<file>resources/shaders/carpet_vert.glsl</file>
+		<file>resources/shaders/multi_radixsort.glsl</file>
+		<file>resources/shaders/multi_radixsort_histograms.glsl</file>
+		<file>resources/shaders/point_frag.glsl</file>
+		<file>resources/shaders/point_vert.glsl</file>
+		<file>resources/shaders/point_geom.glsl</file>
+		<file>resources/shaders/presort_compute.glsl</file>
+		<file>resources/shaders/splat_frag.glsl</file>
+		<file>resources/shaders/splat_vert.glsl</file>
+		<file>resources/shaders/splat_geom.glsl</file>
+		<file>resources/shaders/splat_peel_frag.glsl</file> 	
 	</qresource>
 </RCC>

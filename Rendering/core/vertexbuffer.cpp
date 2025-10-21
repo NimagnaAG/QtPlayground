@@ -7,22 +7,12 @@
 
 #include <cassert>
 #include <string.h>
-
-#ifdef __ANDROID__
-#include <EGL/egl.h>
-#include <EGL/eglext.h>
-#include <GLES3/gl3.h>
-#include <GLES3/gl3ext.h>
-#else
-#include <GL/glew.h>
+#include <QtOpenGL/QOpenGLFunctions_4_0_Core> 
+ #include <QtGui/QOpenGLExtraFunctions>
+ 
 #define GL_GLEXT_PROTOTYPES 1
-#include <SDL2/SDL_opengl.h>
-#include <SDL2/SDL_opengl_glext.h>
-#endif
-
 #include "util.h"
-
-#ifdef __ANDROID__
+ 
 static void glBufferStorage(GLenum target, GLsizeiptr size, const void* data, GLbitfield flags)
 {
 	GLenum usage = 0;
@@ -48,13 +38,12 @@ static void glBufferStorage(GLenum target, GLsizeiptr size, const void* data, GL
 			usage = GL_STATIC_DRAW;
 		}
 	}
-	glBufferData(target, size, data, usage);
-}
-#endif
-
-BufferObject::BufferObject(int targetIn, void* data, size_t size, unsigned int flags)
-{
-	target = targetIn;
+        QOpenGLExtraFunctions* glFuncs = QOpenGLContext::currentContext()->extraFunctions();
+        glFuncs->glBufferData(target, size, data, usage);
+} 
+BufferObject::BufferObject(int targetIn, void* data, size_t size, unsigned int flags) {
+    initializeOpenGLFunctions();
+  	target = targetIn;
     glGenBuffers(1, &obj);
 	Bind();
     glBufferStorage(target, size, data, flags);
@@ -98,6 +87,8 @@ BufferObject::BufferObject(int targetIn, const std::vector<glm::vec3>& data, uns
 
 BufferObject::BufferObject(int targetIn, const std::vector<glm::vec4>& data, unsigned int flags)
 {
+  initializeOpenGLFunctions();
+
 	target = targetIn;
     glGenBuffers(1, &obj);
 	Bind();
@@ -109,6 +100,8 @@ BufferObject::BufferObject(int targetIn, const std::vector<glm::vec4>& data, uns
 
 BufferObject::BufferObject(int targetIn, const std::vector<uint32_t>& data, unsigned int flags)
 {
+  initializeOpenGLFunctions();
+
 	target = targetIn;
     glGenBuffers(1, &obj);
 	Bind();
@@ -123,12 +116,12 @@ BufferObject::~BufferObject()
     glDeleteBuffers(1, &obj);
 }
 
-void BufferObject::Bind() const
+void BufferObject::Bind()  
 {
 	glBindBuffer(target, obj);
 }
 
-void BufferObject::Unbind() const
+void BufferObject::Unbind()  
 {
 	glBindBuffer(target, 0);
 }
@@ -193,12 +186,12 @@ VertexArrayObject::~VertexArrayObject()
 	glDeleteVertexArrays(1, &obj);
 }
 
-void VertexArrayObject::Bind() const
+void VertexArrayObject::Bind()  
 {
 	glBindVertexArray(obj);
 }
 
-void VertexArrayObject::Unbind() const
+void VertexArrayObject::Unbind()  
 {
 	glBindVertexArray(0);
 }
@@ -226,7 +219,7 @@ void VertexArrayObject::SetElementBuffer(std::shared_ptr<BufferObject> elementBu
 	Unbind();
 }
 
-void VertexArrayObject::DrawElements(int mode) const
+void VertexArrayObject::DrawElements(int mode)  
 {
 	Bind();
 	glDrawElements((GLenum)mode, elementBuffer->numElements, GL_UNSIGNED_INT, nullptr);

@@ -5,6 +5,7 @@
 #include <Rendering/GeoGsRenderObject.h>
 #include <Rendering/GltfRenderObject.h>
 #include <Rendering/GsRenderObject.h>
+#include <Rendering/PlyRenderObject.h>
 
 #include <QtCore/QThread>
 #include <QtGui/QPainter>
@@ -181,18 +182,27 @@ void RenderObjectManager::addObject(RenderObjectType type, const QString& filena
       renderObject = std::make_shared<GltfRenderObject>(filename);
       break;
     case nimagna::RenderObjectManager::RenderObjectType::kGs:
-      renderObject = std::make_shared<GeoGsRenderObject>(filename);
+      renderObject = std::make_shared<GsRenderObject>(filename);
       break;
     case nimagna::RenderObjectManager::RenderObjectType::kGeoGs:
-      if (mRenderObjectsList.size() > 0) {
-        mCurrentGsObjPosition = static_cast<int>(mRenderObjectsList.size());
-        delete mRenderObjectsList.at(mCurrentGsObjPosition).get();
-        mRenderObjectsList.erase(mRenderObjectsList.begin() + mCurrentGsObjPosition);
+      if (!mRenderObjectsList.empty()) {
+        // Find the last GeoGsRenderObject in the list
+        auto it =
+            std::find_if(mRenderObjectsList.rbegin(), mRenderObjectsList.rend(),
+                         [](const std::shared_ptr<RenderObject>& obj) {
+                           return std::dynamic_pointer_cast<GeoGsRenderObject>(obj) != nullptr;
+                         });
+        if (it != mRenderObjectsList.rend()) {
+          // Convert reverse iterator to normal iterator
+          auto normalIt = std::next(it).base();
+          mRenderObjectsList.erase(normalIt);
+          delete normalIt->get();  // Remove the last GeoGsRenderObject
+        }
       }
       renderObject = std::make_shared<GeoGsRenderObject>(filename);
-      break;
+      break; 
     case nimagna::RenderObjectManager::RenderObjectType::kPly:
-      renderObject = std::make_shared<GsRenderObject>(filename);
+      renderObject = std::make_shared<PlyRenderObject>(filename);
       break;
     default:
       break;

@@ -4,13 +4,12 @@
 */
 
 #include "image.h"
-//#include "util.h"
-#include "log.h"
+//#include "util.h" 
 
 #include <string.h>
 
 extern "C" {
-#include <png.h>
+#include  <QtPng/png.h>
 }
 
 #include "util.h"
@@ -32,7 +31,7 @@ bool Image::Load(const std::string& filenameIn)
 #endif
     if (!fp)
     {
-        Log::E("Failed to load texture \"%s\"\n", filename);
+        printf("Failed to load texture \"%s\"\n", filename);
         return false;
     }
 
@@ -40,21 +39,21 @@ bool Image::Load(const std::string& filenameIn)
     fread(header, 1, 8, fp);
     if (png_sig_cmp(header, 0, 8))
     {
-        Log::E("Texture \"%s\" is not a valid PNG file\n", filename);
+        printf("Texture \"%s\" is not a valid PNG file\n", filename);
         return false;
     }
 
     png_structp png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
     if (!png_ptr)
     {
-        Log::E("png_create_read_struct() failed\n");
+        printf("png_create_read_struct() failed\n");
         return false;
     }
 
     png_infop info_ptr = png_create_info_struct(png_ptr);
     if (!info_ptr)
     {
-        Log::E("png_create_info_struct() failed\n");
+        printf("png_create_info_struct() failed\n");
         png_destroy_read_struct(&png_ptr, (png_infopp)NULL, (png_infopp)NULL);
         return false;
     }
@@ -72,7 +71,7 @@ bool Image::Load(const std::string& filenameIn)
     bool loaded = false;
     if (bit_depth != 8)
     {
-        Log::E("bad bit depth for texture \"%s\n", filename);
+        printf("bad bit depth for texture \"%s\n", filename);
     }
     else
     {
@@ -96,7 +95,7 @@ bool Image::Load(const std::string& filenameIn)
             pixelSize = 4;
             break;
         default:
-            Log::E("unsupported pixel format %d for image \"%s\n", color_type, filename);
+            printf("unsupported pixel format %d for image \"%s\n", color_type, filename);
             return false;
         }
 

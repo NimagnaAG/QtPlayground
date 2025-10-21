@@ -9,10 +9,8 @@
 #include <memory>
 #include <vector>
 
-class Program;
-
-class DebugRenderer
-{
+class  QOpenGLShaderProgram; 
+class DebugRenderer : protected QOpenGLFunctions_4_0_Core {
 public:
 	DebugRenderer();
 
@@ -29,7 +27,8 @@ public:
 	void Transform(const glm::mat4& m, float axisLen = 1.0f);
 
 protected:
-	std::shared_ptr<Program> ddProg;
+    std::unique_ptr<QOpenGLShaderProgram> ddProg;
+	//std::shared_ptr<Program> ddProg;
 	std::vector<glm::vec3> linePositionVec;
 	std::vector<glm::vec3> lineColorVec;
 };

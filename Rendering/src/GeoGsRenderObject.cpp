@@ -175,31 +175,22 @@ void GeoGsRenderObject::draw(const QMatrix4x4& viewMatrix, const QMatrix4x4& pro
 
   glClear(GL_COLOR_BUFFER_BIT);
   glEnable(GL_BLEND);
-  glBlendFunc(GL_ONE_MINUS_DST_ALPHA, GL_ONE);
-  // sort by depth depending on the view projection matrix
-  /*if (!isControlPressed) {
-      mViewMatrix = viewMatrix;
-  }*/
-
-  mShaderProgram->bind();
-  //QSize viewportSize = QOpenGLContext::currentContext()->screen()->size();
-  //resizeGL(viewportSize.width(), viewportSize.height());
+  glBlendFunc(GL_ONE_MINUS_DST_ALPHA, GL_ONE); 
+  mShaderProgram->bind(); 
   if (isControlPressed) {
       mShaderProgram->setUniformValue(m_uViewLoc, mViewMatrix);
       sortSplatsAndUpdateIndexBufferObject(mViewMatrix * gsprojectionMatrix);
   }
   // QMatrix4x4 gsprojectionMatrix = getProjectionMatrix(focalValue.x(), focalValue.y(),
   // viewportSize.width(), viewportSize.height()); sortSplatsAndUpdateIndexBufferObject(viewMatrix *
-  // gsprojectionMatrix);
-
+  // gsprojectionMatrix); 
   // bind shader and update the view/projection matrices
 
   // mShaderProgram->setUniformValue(m_uViewLoc, viewMatrix);
   // mShaderProgram->setUniformValue(m_uProjLoc, gsprojectionMatrix);
 
   // mShaderProgram->setUniformValue(viewportLocation,  QVector2D(viewportSize.width(),
-  // viewportSize.height()));
-
+  // viewportSize.height())); 
   mVAO.bind();
   mIBO.bind();
   glDrawElements(GL_POINTS, int(mSplatData.positions.size()), GL_UNSIGNED_INT, 0);
@@ -306,8 +297,7 @@ void GeoGsRenderObject::sortSplatsAndUpdateIndexBufferObject(const QMatrix4x4& v
     QVector4D pos4(mSplatData.positions[i], 1.0f);
     QVector4D cam = viewProj * pos4;
     depths[i] = cam.z();
-  }
-
+  } 
   // Radix sort for 32-bit floats (reinterpret as uint32_t for sorting)
   std::vector<uint32_t> temp_indices(indices.size());
   std::vector<uint32_t> temp_buffer(indices.size());
@@ -352,7 +342,9 @@ GeoGsRenderObject::~GeoGsRenderObject() {
   mVAO.destroy();
   mVBO.destroy();
   mIBO.destroy();
-  mShaderProgram.reset();
+  mShaderProgram.reset(); 
+  glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
 nimagna::GeoGsRenderObject::SplatData GeoGsRenderObject::loadSplatFile(const QString& filePath) {

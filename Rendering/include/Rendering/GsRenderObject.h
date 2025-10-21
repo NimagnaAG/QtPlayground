@@ -32,8 +32,7 @@
 #include <vector>
 
 #include "RenderObject.h"
-#include "Renderer.h"
-#include "Rendering/Rendering.h"
+#include "Renderer.h" 
 namespace nimagna {
 
 class OpenGlWidget;
