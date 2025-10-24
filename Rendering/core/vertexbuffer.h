@@ -12,7 +12,7 @@
 #include <QtGui/QOffscreenSurface>
 #include <QtGui/QOpenGLContext>
 #include <QtOpenGL/QOpenGLBuffer>
-#include <QtOpenGL/QOpenGLFunctions_4_0_Core>
+#include <QtOpenGL/QOpenGLFunctions_4_5_Core>
 #include <QtOpenGL/QOpenGLShaderProgram>
 #include <QtOpenGL/QOpenGLTexture>
 #include <QtOpenGL/QOpenGLVertexArrayObject>
@@ -25,7 +25,7 @@ class VertexArrayObject;
 #define GL_MAP_READ_BIT                   0x0001
 #endif
 
-class BufferObject : protected QOpenGLFunctions_4_0_Core {
+class BufferObject : protected QOpenGLFunctions_4_5_Core {
 	friend class VertexArrayObject;
 public:
 
@@ -66,7 +66,7 @@ protected:
 	int numElements;  // number of vec2, vec3 in buffer
 };
 
-class VertexArrayObject : protected QOpenGLFunctions_4_0_Core {
+class VertexArrayObject : protected QOpenGLFunctions_4_5_Core {
 public:
 	VertexArrayObject();
 	~VertexArrayObject();

@@ -14,9 +14,7 @@
 #define ZoneScoped
 #define ZoneScopedNC(NAME, COLOR)
 #endif
-
-#include "core/image.h" 
-#include "core/texture.h"
+ 
 #include "core/util.h" 
 #include "Rendering/radix_sort.hpp"
 

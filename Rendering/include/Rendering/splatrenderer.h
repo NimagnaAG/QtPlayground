@@ -79,4 +79,5 @@ protected:
     uint32_t sortCount;
     bool isFramebufferSRGBEnabled;
     bool useRgcSortOverride;
+
 };

@@ -35,17 +35,14 @@ set(Header_Files
     "include/Rendering/GeoGsRenderObject.h"
     "include/Rendering/PlyRenderObject.h"
     "include/Rendering/pointcloud.h"
-    "include/Rendering/gaussiancloud.h"
-    "include/Rendering/splatrenderer.h" 
+    "include/Rendering/gaussiancloud.h" 
     "include/Rendering/radix_sort.hpp" 
     "include/Rendering/ply.h"
-    "core/debugrenderer.h"
-    "core/framebuffer.h"
-    "core/image.h" 
-    "core/texture.h"
+    "core/framebuffer.h" 
     "core/util.h" 
     "core/binaryattribute.h"
     "core/vertexbuffer.h"
+    "core/program.h"
 )
 source_group("Header Files" FILES ${Header_Files})
 
@@ -61,16 +58,13 @@ set(Source_Files
     "src/GltfRenderObject.cpp"
     "src/PlyRenderObject.cpp"
     "src/pointcloud.cpp"
-    "src/gaussiancloud.cpp" 
-    "src/splatrenderer.cpp"   
+    "src/gaussiancloud.cpp"  
     "src/ply.cpp"
-    "core/debugrenderer.cpp"
-    "core/framebuffer.cpp"
-    "core/image.cpp" 
-    "core/texture.cpp"
+    "core/framebuffer.cpp"  
     "core/util.cpp" 
     "core/binaryattribute.cpp"
     "core/vertexbuffer.cpp"
+    "core/program.cpp"
 )
 source_group("Source Files" FILES ${Source_Files})
 

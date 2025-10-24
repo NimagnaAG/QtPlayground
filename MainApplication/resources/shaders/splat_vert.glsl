@@ -47,7 +47,7 @@ in vec3 cov3_col2;
 out vec4 geom_color;  // radiance of splat
 out vec4 geom_cov2;  // 2D screen space covariance matrix of the gaussian
 out vec2 geom_p;  // the 2D screen space center of the gaussian, (z is alpha)
-
+ 
 vec3 ComputeRadianceFromSH(const vec3 v)
 {
 #ifdef FULL_SH

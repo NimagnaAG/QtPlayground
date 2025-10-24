@@ -7,7 +7,7 @@
 
 #include <cassert>
 #include <string.h>
-#include <QtOpenGL/QOpenGLFunctions_4_0_Core> 
+#include <QtOpenGL/QOpenGLFunctions_4_5_Core> 
  #include <QtGui/QOpenGLExtraFunctions>
  
 #define GL_GLEXT_PROTOTYPES 1
@@ -54,6 +54,7 @@ BufferObject::BufferObject(int targetIn, void* data, size_t size, unsigned int f
 
 BufferObject::BufferObject(int targetIn, const std::vector<float>& data, unsigned int flags)
 {
+    initializeOpenGLFunctions();
 	target = targetIn;
     glGenBuffers(1, &obj);
 	Bind();
@@ -65,6 +66,7 @@ BufferObject::BufferObject(int targetIn, const std::vector<float>& data, unsigne
 
 BufferObject::BufferObject(int targetIn, const std::vector<glm::vec2>& data, unsigned int flags)
 {
+    initializeOpenGLFunctions();
 	target = targetIn;
     glGenBuffers(1, &obj);
 	Bind();
@@ -76,6 +78,7 @@ BufferObject::BufferObject(int targetIn, const std::vector<glm::vec2>& data, uns
 
 BufferObject::BufferObject(int targetIn, const std::vector<glm::vec3>& data, unsigned int flags)
 {
+  initializeOpenGLFunctions();
 	target = targetIn;
     glGenBuffers(1, &obj);
 	Bind();
@@ -178,6 +181,7 @@ void BufferObject::Read(std::vector<uint32_t>& data)
 
 VertexArrayObject::VertexArrayObject()
 {
+  initializeOpenGLFunctions();
 	glGenVertexArrays(1, &obj);
 }
 

@@ -10,7 +10,7 @@
 #include <GLES3/gl3.h>
 #include <GLES3/gl3ext.h>
 #else
-#include <QtOpenGL/QOpenGLFunctions_4_0_Core> 
+#include <QtOpenGL/QOpenGLFunctions_4_5_Core> 
 #endif 
 
 #include "texture.h"

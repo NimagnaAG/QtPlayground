@@ -25,7 +25,7 @@
 */
 #pragma once
 #define GL_GLEXT_PROTOTYPES
-#include "qopenglfunctions_4_0_core.h"
+#include "qopenglfunctions_4_5_core.h"
  #include <QtGui/QOpenGLExtraFunctions> 
 
 #include <QtGui/qopengl.h> 

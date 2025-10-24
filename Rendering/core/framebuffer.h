@@ -8,7 +8,7 @@
 #include <stdint.h>
 #include <memory>
 #include <qopenglextrafunctions.h>
-  #include <qopenglfunctions_4_0_core.h>
+  #include <qopenglfunctions_4_5_core.h>
 #include<qopenglfunctions.h>
 struct Texture;
 
