@@ -8,7 +8,7 @@
 //
 
 /*%%HEADER%%*/
-
+#version 450
 in vec4 frag_color;  // radiance of splat
 in vec4 frag_cov2inv;  // inverse of the 2D screen space covariance matrix of the guassian
 in vec2 frag_p;  // 2D screen space center of the guassian

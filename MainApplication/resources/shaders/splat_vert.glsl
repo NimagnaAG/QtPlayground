@@ -10,7 +10,7 @@
 /*%%HEADER%%*/
 
 /*%%DEFINES%%*/
-
+#version 450
 uniform mat4 viewMat;  // used to project position into view coordinates.
 uniform mat4 projMat;  // used to project view coordinates into clip coordinates.
 uniform vec4 projParams;  // x = HEIGHT / tan(FOVY / 2), y = Z_NEAR, z = Z_FAR

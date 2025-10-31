@@ -2,7 +2,7 @@
 * VkRadixSort written by Mirco Werner: https://github.com/MircoWerner/VkRadixSort
 * Based on implementation of Intel's Embree: https://github.com/embree/embree/blob/v4.0.0-ploc/kernels/rthwif/builder/gpu/sort.h
 */
-#version 460
+#version 450
 //#extension GL_GOOGLE_include_directive: enable
 #extension GL_KHR_shader_subgroup_basic: enable
 #extension GL_KHR_shader_subgroup_arithmetic: enable

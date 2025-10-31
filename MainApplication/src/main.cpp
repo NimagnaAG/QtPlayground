@@ -11,7 +11,7 @@ int main(int argc, char* argv[]) {
 
   // OpenGL surface preset
   QSurfaceFormat format;
-  format.setVersion(4, 0);
+  format.setVersion(4, 5);
   format.setProfile(QSurfaceFormat::CoreProfile);
   QSurfaceFormat::setDefaultFormat(format);
 

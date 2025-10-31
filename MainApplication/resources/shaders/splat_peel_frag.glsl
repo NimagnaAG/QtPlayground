@@ -6,7 +6,7 @@
 //
 // 3d gaussian splat fragment shader
 //
-
+#version 450
 /*%%HEADER%%*/
 
 uniform sampler2D depthTex;

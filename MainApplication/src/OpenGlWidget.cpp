@@ -16,7 +16,7 @@ OpenGlWidget::OpenGlWidget(QWidget* parent /*= nullptr*/, Qt::WindowFlags f /*= 
   QSurfaceFormat format;
   format.setRenderableType(QSurfaceFormat::OpenGL);
   format.setProfile(QSurfaceFormat::CoreProfile);
-  format.setVersion(4, 0);
+  format.setVersion(4, 5);
   format.setSamples(8);
   setFormat(format);
   setFocusPolicy(Qt::StrongFocus);

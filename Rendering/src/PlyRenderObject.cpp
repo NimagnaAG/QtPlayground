@@ -15,13 +15,25 @@ PlyRenderObject::PlyRenderObject(const QString& location) : mGsLocation(location
 PlyRenderObject::~PlyRenderObject() {
   // QOpenGLShaderProgram will be deleted automatically by unique_ptr
 }
-void PlyRenderObject::BuildVertexArrayObject(std::shared_ptr<GaussianCloud> gaussianCloud) {
-  splatVao = std::make_shared<VertexArrayObject>();
+void PlyRenderObject::BuildVertexArrayObject() {
+  if (!splatVao.isCreated()) {
+    SPDLOG_DEBUG("Creating VertexArrayObject");
+    splatVao.create();
+  }
+  splatVao.bind();
 
-  // allocate large buffer to hold interleaved vertex data
+  // gaussianDataBuffer = QOpenGLBuffer(QOpenGLBuffer::VertexBuffer);  // Mind: use 'IndexBuffer'
+  // here
+  // if (!gaussianDataBuffer.create()) {
+  //  SPDLOG_ERROR("Failed to create IndexBufferObject");
+  //}
+  //// IBO is dynamic because it gets updated when splats are sorted
+  // gaussianDataBuffer.setUsagePattern(QOpenGLBuffer::StaticDraw);
+  //// allocate index buffer for the amount of indices
+  // gaussianDataBuffer.bind();
+  // gaussianDataBuffer.allocate(gaussianCloud->GetRawDataPtr(),gaussianCloud->GetTotalSize());
   gaussianDataBuffer = std::make_shared<BufferObject>(
       GL_ARRAY_BUFFER, gaussianCloud->GetRawDataPtr(), gaussianCloud->GetTotalSize(), 0);
-
   const size_t numGaussians = gaussianCloud->GetNumGaussians();
 
   // build element array
@@ -30,34 +42,47 @@ void PlyRenderObject::BuildVertexArrayObject(std::shared_ptr<GaussianCloud> gaus
   for (uint32_t i = 0; i < (uint32_t)numGaussians; i++) {
     indexVec.push_back(i);
   }
+  /*  QOpenGLBuffer indexBuffer =
+      QOpenGLBuffer(QOpenGLBuffer::IndexBuffer);  // Mind: use 'IndexBuffer' here
+  if (!indexBuffer.create()) {
+    SPDLOG_ERROR("Failed to create IndexBufferObject");
+  }
+  // IBO is dynamic because it gets updated when splats are sorted
+  indexBuffer.setUsagePattern(QOpenGLBuffer::DynamicDraw);
+  // allocate index buffer for the amount of indices
+  indexBuffer.bind();
+  indexBuffer.allocate(&indexVec, int(numGaussians * sizeof(uint32_t)));*/
   auto indexBuffer =
       std::make_shared<BufferObject>(GL_ELEMENT_ARRAY_BUFFER, indexVec, GL_DYNAMIC_STORAGE_BIT);
 
-  splatVao->Bind();
+  splatVao.bind();
   gaussianDataBuffer->Bind();
-
+  // gaussianDataBuffer.bind();
   const size_t stride = gaussianCloud->GetStride();
-  SetupAttrib(splatProg->GetAttribLoc("position"), gaussianCloud->GetPosWithAlphaAttrib(), 4,
+  SetupAttrib(splatProg->uniformLocation("position"), gaussianCloud->GetPosWithAlphaAttrib(), 4,
               stride);
-  SetupAttrib(splatProg->GetAttribLoc("r_sh0"), gaussianCloud->GetR_SH0Attrib(), 4, stride);
-  SetupAttrib(splatProg->GetAttribLoc("g_sh0"), gaussianCloud->GetG_SH0Attrib(), 4, stride);
-  SetupAttrib(splatProg->GetAttribLoc("b_sh0"), gaussianCloud->GetB_SH0Attrib(), 4, stride);
+  SetupAttrib(splatProg->uniformLocation("r_sh0"), gaussianCloud->GetR_SH0Attrib(), 4, stride);
+  SetupAttrib(splatProg->uniformLocation("g_sh0"), gaussianCloud->GetG_SH0Attrib(), 4, stride);
+  SetupAttrib(splatProg->uniformLocation("b_sh0"), gaussianCloud->GetB_SH0Attrib(), 4, stride);
   if (gaussianCloud->HasFullSH()) {
-    SetupAttrib(splatProg->GetAttribLoc("r_sh1"), gaussianCloud->GetR_SH1Attrib(), 4, stride);
-    SetupAttrib(splatProg->GetAttribLoc("r_sh2"), gaussianCloud->GetR_SH2Attrib(), 4, stride);
-    SetupAttrib(splatProg->GetAttribLoc("r_sh3"), gaussianCloud->GetR_SH3Attrib(), 4, stride);
-    SetupAttrib(splatProg->GetAttribLoc("g_sh1"), gaussianCloud->GetG_SH1Attrib(), 4, stride);
-    SetupAttrib(splatProg->GetAttribLoc("g_sh2"), gaussianCloud->GetG_SH2Attrib(), 4, stride);
-    SetupAttrib(splatProg->GetAttribLoc("g_sh3"), gaussianCloud->GetG_SH3Attrib(), 4, stride);
-    SetupAttrib(splatProg->GetAttribLoc("b_sh1"), gaussianCloud->GetB_SH1Attrib(), 4, stride);
-    SetupAttrib(splatProg->GetAttribLoc("b_sh2"), gaussianCloud->GetB_SH2Attrib(), 4, stride);
-    SetupAttrib(splatProg->GetAttribLoc("b_sh3"), gaussianCloud->GetB_SH3Attrib(), 4, stride);
+    SetupAttrib(splatProg->uniformLocation("r_sh1"), gaussianCloud->GetR_SH1Attrib(), 4, stride);
+    SetupAttrib(splatProg->uniformLocation("r_sh2"), gaussianCloud->GetR_SH2Attrib(), 4, stride);
+    SetupAttrib(splatProg->uniformLocation("r_sh3"), gaussianCloud->GetR_SH3Attrib(), 4, stride);
+    SetupAttrib(splatProg->uniformLocation("g_sh1"), gaussianCloud->GetG_SH1Attrib(), 4, stride);
+    SetupAttrib(splatProg->uniformLocation("g_sh2"), gaussianCloud->GetG_SH2Attrib(), 4, stride);
+    SetupAttrib(splatProg->uniformLocation("g_sh3"), gaussianCloud->GetG_SH3Attrib(), 4, stride);
+    SetupAttrib(splatProg->uniformLocation("b_sh1"), gaussianCloud->GetB_SH1Attrib(), 4, stride);
+    SetupAttrib(splatProg->uniformLocation("b_sh2"), gaussianCloud->GetB_SH2Attrib(), 4, stride);
+    SetupAttrib(splatProg->uniformLocation("b_sh3"), gaussianCloud->GetB_SH3Attrib(), 4, stride);
   }
-  SetupAttrib(splatProg->GetAttribLoc("cov3_col0"), gaussianCloud->GetCov3_Col0Attrib(), 3, stride);
-  SetupAttrib(splatProg->GetAttribLoc("cov3_col1"), gaussianCloud->GetCov3_Col1Attrib(), 3, stride);
-  SetupAttrib(splatProg->GetAttribLoc("cov3_col2"), gaussianCloud->GetCov3_Col2Attrib(), 3, stride);
+  SetupAttrib(splatProg->uniformLocation("cov3_col0"), gaussianCloud->GetCov3_Col0Attrib(), 3,
+              stride);
+  SetupAttrib(splatProg->uniformLocation("cov3_col1"), gaussianCloud->GetCov3_Col1Attrib(), 3,
+              stride);
+  SetupAttrib(splatProg->uniformLocation("cov3_col2"), gaussianCloud->GetCov3_Col2Attrib(), 3,
+              stride);
 
-  splatVao->SetElementBuffer(indexBuffer);
+  // splatVao.   //->SetElementBuffer(indexBuffer);
   gaussianDataBuffer->Unbind();
 }
 
@@ -66,7 +91,7 @@ void PlyRenderObject::initialize() {
   // setupShaderProgram();
   //  Additional initialization (buffers, VAO, textures) can be added here
 
-//  glDisable(GL_FRAMEBUFFER_SRGB);
+  //  glDisable(GL_FRAMEBUFFER_SRGB);
   bool isFramebufferSRGBEnabled = false;
 
   // gaussianCloud = LoadGaussianCloud(mGsLocation, opt);
@@ -80,16 +105,16 @@ void PlyRenderObject::initialize() {
     SPDLOG_ERROR("Error loading GaussianCloud!\n");
     return;
   }
- // splatRenderer = std::make_shared<SplatRenderer>();
+  // splatRenderer = std::make_shared<SplatRenderer>();
 
   bool useRgcSortOverride = false;
- /* if (!splatRenderer->Init(gaussianCloud, isFramebufferSRGBEnabled, useRgcSortOverride)) {
-    SPDLOG_ERROR("Error initializing splat renderer!\n");
-    return;
-  }*/
-   
-  GL_ERROR_CHECK("SplatRenderer::Init() begin"); 
-  splatProg = std::make_shared<Program>(); 
+  /* if (!splatRenderer->Init(gaussianCloud, isFramebufferSRGBEnabled, useRgcSortOverride)) {
+     SPDLOG_ERROR("Error initializing splat renderer!\n");
+     return;
+   }*/
+
+  GL_ERROR_CHECK("SplatRenderer::Init() begin");
+  splatProg = std::make_unique<QOpenGLShaderProgram>();
   if (isFramebufferSRGBEnabled || gaussianCloud->HasFullSH()) {
     std::string defines = "";
     if (isFramebufferSRGBEnabled) {
@@ -98,44 +123,79 @@ void PlyRenderObject::initialize() {
     if (gaussianCloud->HasFullSH()) {
       defines += "#define FULL_SH\n";
     }
-    splatProg->AddMacro("DEFINES", defines);
+    // splatProg->AddMacro("DEFINES", defines);
   }
-  if (!splatProg->LoadVertGeomFrag("MainApplication/resources/shaders/splat_vert.glsl", "MainApplication/resources/shaders/splat_geom.glsl",
-                                   "MainApplication/resources/shaders/splat_frag.glsl")) {
-    SPDLOG_ERROR("Error loading splat shaders!\n"); 
+  if (!splatProg->addCacheableShaderFromSourceFile(QOpenGLShader::Vertex,
+                                                   ":/resources/shaders/splat_vert.glsl")) {
+    SPDLOG_ERROR("splatProg Vertex shader error! {}", splatProg->log().toStdString());
+  }
+  if (!splatProg->addCacheableShaderFromSourceFile(QOpenGLShader::Geometry,
+                                                   ":/resources/shaders/splat_geom.glsl")) {
+    SPDLOG_ERROR("splatProg Geom shader error! {}", splatProg->log().toStdString());
+  }
+  if (!splatProg->addCacheableShaderFromSourceFile(QOpenGLShader::Fragment,
+                                                   ":/resources/shaders/splat_frag.glsl")) {
+    SPDLOG_ERROR("splatProg Fragment shader error! {}", splatProg->log().toStdString());
+  }
+  if (!splatProg->link()) {
+    SPDLOG_ERROR("splatProg Shader linker error! {}", splatProg->log().toStdString());
+  }
+  if (!splatProg->bind()) {
+    SPDLOG_ERROR("splatProg Failed to bind shader program! {}", splatProg->log().toStdString());
+  }
+  int posLoc = splatProg->uniformLocation("position");
+  SPDLOG_INFO("position loc: {}", posLoc);
+  preSortProg = std::make_unique<QOpenGLShaderProgram>();
+  if (!preSortProg->addShaderFromSourceFile(QOpenGLShader::Compute,
+                                            ":/resources/shaders/presort_compute.glsl")) {
+    SPDLOG_ERROR("preSortProg Comp shader error! {}", preSortProg->log().toStdString());
+  }
+  if (!preSortProg->link()) {
+    SPDLOG_ERROR("preSortProg Shader linker error! {}", preSortProg->log().toStdString());
+  }
+  if (!preSortProg->bind()) {
+    SPDLOG_ERROR("preSortProg Failed to bind shader program! {}", preSortProg->log().toStdString());
   }
 
-  preSortProg = std::make_shared<Program>();
-  if (!preSortProg->LoadCompute("MainApplication/resources/shaders/presort_compute.glsl")) {
-    SPDLOG_ERROR("Error loading pre-sort compute shader!\n"); 
-  } 
   bool useMultiRadixSort = !useRgcSortOverride;
   if (useMultiRadixSort) {
-    sortProg = std::make_shared<Program>();
-    if (!sortProg->LoadCompute("MainApplication/resources/shaders/multi_radixsort.glsl")) {
-      SPDLOG_ERROR("Error loading sort compute shader!\n"); 
+    sortProg = std::make_shared<QOpenGLShaderProgram>();
+    if (!sortProg->addShaderFromSourceFile(QOpenGLShader::Compute,
+                                           ":/resources/shaders/multi_radixsort.glsl")) {
+      SPDLOG_ERROR("sortProg Comp shader error! {}", sortProg->log().toStdString());
+    }
+    if (!sortProg->link()) {
+      SPDLOG_ERROR("sortProg Shader linker error! {}", sortProg->log().toStdString());
+    }
+    if (!sortProg->bind()) {
+      SPDLOG_ERROR("sortProg Failed to bind shader program! {}", sortProg->log().toStdString());
     }
 
-    histogramProg = std::make_shared<Program>();
-    if (!histogramProg->LoadCompute("MainApplication/resources/shaders/multi_radixsort_histograms.glsl")) {
-      SPDLOG_ERROR("Error loading histogram compute shader!\n"); 
+    histogramProg = std::make_unique<QOpenGLShaderProgram>();
+    if (!histogramProg->addShaderFromSourceFile(
+            QOpenGLShader::Compute, ":/resources/shaders/multi_radixsort_histograms.glsl")) {
+      SPDLOG_ERROR("histogramProg Comp shader error! {}", histogramProg->log().toStdString());
+    }
+    if (!histogramProg->link()) {
+      SPDLOG_ERROR("histogramProg Shader linker error! {}", histogramProg->log().toStdString());
+    }
+    if (!histogramProg->bind()) {
+      SPDLOG_ERROR("histogramProg Failed to bind shader program! {}",
+                   histogramProg->log().toStdString());
     }
   }
-   
-
   // build posVec
   size_t numGaussians = gaussianCloud->GetNumGaussians();
   posVec.reserve(numGaussians);
   gaussianCloud->ForEachPosWithAlpha(
       [this](const float* pos) { posVec.emplace_back(glm::vec4(pos[0], pos[1], pos[2], 1.0f)); });
 
-  BuildVertexArrayObject(gaussianCloud);
+  BuildVertexArrayObject();
 
   depthVec.resize(numGaussians);
 
   if (useMultiRadixSort) {
-    printf("using multi_radixsort.glsl\n");
-
+    SPDLOG_INFO("using multi_radixsort.glsl\n");
     keyBuffer =
         std::make_shared<BufferObject>(GL_SHADER_STORAGE_BUFFER, depthVec, GL_DYNAMIC_STORAGE_BIT);
     keyBuffer2 =
@@ -156,7 +216,7 @@ void PlyRenderObject::initialize() {
         std::make_shared<BufferObject>(GL_SHADER_STORAGE_BUFFER, indexVec, GL_DYNAMIC_STORAGE_BIT);
     posBuffer = std::make_shared<BufferObject>(GL_SHADER_STORAGE_BUFFER, posVec);
   } else {
-    printf("using rgc::radix_sort\n");
+    SPDLOG_INFO("using rgc::radix_sort\n");
     keyBuffer =
         std::make_shared<BufferObject>(GL_SHADER_STORAGE_BUFFER, depthVec, GL_DYNAMIC_STORAGE_BIT);
     valBuffer =
@@ -172,27 +232,19 @@ void PlyRenderObject::initialize() {
 
   GL_ERROR_CHECK("SplatRenderer::Init() end");
 
-  /*  desktopProgram = std::make_unique<QOpenGLShaderProgram>();
-  if (!desktopProgram->addCacheableShaderFromSourceFile(QOpenGLShader::Vertex,
-                                                        ":/resources/shaders/desktop_vert.glsl")) {
-    SPDLOG_ERROR("Error loading Vertex shader!\n");
-    return;
-  }
-  if (!desktopProgram->addCacheableShaderFromSourceFile(QOpenGLShader::Fragment,
-                                                        ":/resources/shaders/desktop_frag.glsl")) {
-    SPDLOG_ERROR("Error loading Fragment shader!\n");
-    return;
-  }*/
+  // Done
+  RenderObject::initialize();
+
+  SPDLOG_INFO("PlyRenderObject::initialize() done ");
 }
 void PlyRenderObject::Sort(const QMatrix4x4& cameraMat, const QMatrix4x4& projMat,
-                         const QVector4D& viewport, const QVector2D& nearFar) {
- 
+                           const QVector2D& nearFar) {
   GL_ERROR_CHECK("SplatRenderer::Sort() begin");
 
   const size_t numPoints = posVec.size();
-  QMatrix4x4 modelViewMat = cameraMat.inverted(); 
+  QMatrix4x4 modelViewMat = cameraMat.inverted();
 
-  bool useMultiRadixSort =true;
+  bool useMultiRadixSort = true;
 
   // 24 bit radix sort still has some artifacts on some datasets, so use 32 bit sort.
   // const uint32_t NUM_BYTES = useMultiRadixSort ? 3 : 4;
@@ -200,12 +252,11 @@ void PlyRenderObject::Sort(const QMatrix4x4& cameraMat, const QMatrix4x4& projMa
   const uint32_t NUM_BYTES = 4;
   const uint32_t MAX_DEPTH = std::numeric_limits<uint32_t>::max();
 
-  { 
-
-    preSortProg->Bind();
-    preSortProg->SetUniform("modelViewProj", projMat * modelViewMat);
-    preSortProg->SetUniform("nearFar", nearFar);
-    preSortProg->SetUniform("keyMax", MAX_DEPTH);
+  {
+    preSortProg->bind();
+    preSortProg->setUniformValue("modelViewProj", projMat * modelViewMat);
+    preSortProg->setUniformValue("nearFar", nearFar);
+    preSortProg->setUniformValue("keyMax", MAX_DEPTH);
 
     // reset counter back to zero
     atomicCounterVec[0] = 0;
@@ -224,8 +275,7 @@ void PlyRenderObject::Sort(const QMatrix4x4& cameraMat, const QMatrix4x4& projMa
     GL_ERROR_CHECK("SplatRenderer::Sort() pre-sort");
   }
 
-  { 
-
+  {
     atomicCounterBuffer->Read(atomicCounterVec);
     sortCount = atomicCounterVec[0];
 
@@ -234,25 +284,24 @@ void PlyRenderObject::Sort(const QMatrix4x4& cameraMat, const QMatrix4x4& projMa
     GL_ERROR_CHECK("SplatRenderer::Render() get-count");
   }
 
-  if (useMultiRadixSort) { 
-
+  if (useMultiRadixSort) {
     const uint32_t NUM_ELEMENTS = static_cast<uint32_t>(sortCount);
     const uint32_t NUM_WORKGROUPS =
         (NUM_ELEMENTS + numBlocksPerWorkgroup - 1) / numBlocksPerWorkgroup;
 
-    sortProg->Bind();
-    sortProg->SetUniform("g_num_elements", NUM_ELEMENTS);
-    sortProg->SetUniform("g_num_workgroups", NUM_WORKGROUPS);
-    sortProg->SetUniform("g_num_blocks_per_workgroup", numBlocksPerWorkgroup);
+    sortProg->bind();
+    sortProg->setUniformValue("g_num_elements", NUM_ELEMENTS);
+    sortProg->setUniformValue("g_num_workgroups", NUM_WORKGROUPS);
+    sortProg->setUniformValue("g_num_blocks_per_workgroup", numBlocksPerWorkgroup);
 
-    histogramProg->Bind();
-    histogramProg->SetUniform("g_num_elements", NUM_ELEMENTS);
+    histogramProg->bind();
+    histogramProg->setUniformValue("g_num_elements", NUM_ELEMENTS);
     // histogramProg->SetUniform("g_num_workgroups", NUM_WORKGROUPS);
-    histogramProg->SetUniform("g_num_blocks_per_workgroup", numBlocksPerWorkgroup);
+    histogramProg->setUniformValue("g_num_blocks_per_workgroup", numBlocksPerWorkgroup);
 
     for (uint32_t i = 0; i < NUM_BYTES; i++) {
-      histogramProg->Bind();
-      histogramProg->SetUniform("g_shift", 8 * i);
+      histogramProg->bind();
+      histogramProg->setUniformValue("g_shift", 8 * i);
 
       if (i == 0 || i == 2) {
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, keyBuffer->GetObj());
@@ -265,8 +314,8 @@ void PlyRenderObject::Sort(const QMatrix4x4& cameraMat, const QMatrix4x4& projMa
 
       glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
-      sortProg->Bind();
-      sortProg->SetUniform("g_shift", 8 * i);
+      sortProg->bind();
+      sortProg->setUniformValue("g_shift", 8 * i);
 
       if ((i % 2) == 0)  // even
       {
@@ -304,23 +353,20 @@ void PlyRenderObject::Sort(const QMatrix4x4& cameraMat, const QMatrix4x4& projMa
           break;
         }
       }
-
-      printf("%s", sorted ? "o" : "x");
     }
-  } else { 
+  } else {
     sorter->sort(keyBuffer->GetObj(), valBuffer->GetObj(), sortCount);
     GL_ERROR_CHECK("SplatRenderer::Sort() rgc sort");
   }
 
-  { 
-
+  {
     if (useMultiRadixSort && (NUM_BYTES % 2) == 1)  // odd
     {
       glBindBuffer(GL_COPY_READ_BUFFER, valBuffer2->GetObj());
     } else {
       glBindBuffer(GL_COPY_READ_BUFFER, valBuffer->GetObj());
     }
-    glBindBuffer(GL_COPY_WRITE_BUFFER, splatVao->GetElementBuffer()->GetObj());
+    glBindBuffer(GL_COPY_WRITE_BUFFER, splatVao.objectId());
     glCopyBufferSubData(GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER, 0, 0,
                         sortCount * sizeof(uint32_t));
 
@@ -329,41 +375,43 @@ void PlyRenderObject::Sort(const QMatrix4x4& cameraMat, const QMatrix4x4& projMa
 }
 
 void PlyRenderObject::draw(const QMatrix4x4& viewMatrix, const QMatrix4x4& projectionMatrix) {
-  
   Clear();
+   
   QSize viewportSize = QOpenGLContext::currentContext()->screen()->size();
- 
+
   QVector4D viewport(0.0f, 0.0f, (float)viewportSize.width(), (float)viewportSize.height());
   QVector2D nearFar(znear, zfar);
-  gsprojectionMatrix.perspective(fovY(), (float)viewportSize.width() / (float)viewportSize.height(),  znear, zfar);
-  // Convert gsprojectionMatrix (assumed QMatrix4x4) to glm::mat4 
- /* if ( pointRenderer) {
-    pointRenderer->Render(cameraMat, projMat, viewport, nearFar);
-  } else {*/
-        Sort(viewMatrix, gsprojectionMatrix, viewport, nearFar);
-  GL_ERROR_CHECK("SplatRenderer::Render() begin"); 
-  { 
-    float width = viewport.z();
-    float height = viewport.w();
-    float aspectRatio = width / height; 
-    glm::vec3 eye = glm::vec3(viewMatrix(0, 3), viewMatrix(1, 3), viewMatrix(2, 3));
+  QMatrix4x4 gsprojectionMatrix;
+  gsprojectionMatrix.setToIdentity();
+  gsprojectionMatrix.perspective(
+      fovY(),
+      static_cast<float>(viewportSize.width()) / static_cast<float>(viewportSize.height()), znear,
+      zfar);
 
-    splatProg->Bind();
-    splatProg->SetUniform("viewMat", viewMatrix);
-    splatProg->SetUniform("projMat", gsprojectionMatrix);
-    splatProg->SetUniform("viewport", viewport);
-    splatProg->SetUniform("projParams", glm::vec4(0.0f, nearFar.x(), nearFar.y(), 0.0f));
-    splatProg->SetUniform("eye", eye);
+  Sort( viewMatrix, gsprojectionMatrix, nearFar);
 
-    splatVao->Bind();
+  GL_ERROR_CHECK("SplatRenderer::Render() begin");
+  {
+    QMatrix4x4 viewMat = viewMatrix.inverted();
+    QVector3D eye = viewMatrix.column(3).toVector3D();
+    splatProg->bind();
+    splatProg->setUniformValue("viewMat", viewMat);
+    splatProg->setUniformValue("projMat", gsprojectionMatrix);
+    splatProg->setUniformValue("viewport", viewport);
+    splatProg->setUniformValue("projParams", QVector4D(0.0f, nearFar.x(), nearFar.y(), 0.0f));
+    splatProg->setUniformValue("eye", eye);
+    if (!splatVao.isCreated()) {
+      SPDLOG_DEBUG("Creating VertexArrayObject");
+      splatVao.create();
+    }
+    splatVao.bind();
     glDrawElements(GL_POINTS, sortCount, GL_UNSIGNED_INT, nullptr);
-    splatVao->Unbind();
+    splatVao.release();
     GL_ERROR_CHECK("SplatRenderer::Render() draw");
   }
-  //} 
+  //}
 }
 
-void PlyRenderObject::setupShaderProgram() {}
 // searches for file named configFilename, dir that contains plyFilename, it's parent and
 // grandparent dirs.
 QString PlyRenderObject::FindConfigFile(const QString& plyFilename, const QString& configFilename) {
@@ -399,17 +447,21 @@ QString PlyRenderObject::GetFilenameWithoutExtension(const QString& filepath) {
 }
 
 void PlyRenderObject::Clear() {
+  glEnable(GL_DEPTH_TEST);
+  glDepthFunc(GL_ALWAYS);
   //// pre-multiplied alpha blending
-  // glEnable(GL_BLEND);
-  ////glBlendEquation(GL_FUNC_ADD);
-  // glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+
+  glEnable(GL_BLEND);
+  glBlendEquation(GL_FUNC_ADD);
+  // glBlendFunc(GL_ONE_MINUS_DST_ALPHA, GL_ONE);
+  glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
   // glm::vec4 clearColor(0.0f, 0.0f, 0.0f, 1.0f);
   // glClearColor(clearColor.r, clearColor.g, clearColor.b, clearColor.a);
-  // glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  //   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   //// NOTE: if depth buffer has less then 24 bits, it can mess up splat rendering.
-  // glEnable(GL_DEPTH_TEST);
-}
 
+  // glBlendFunc(GL_ONE_MINUS_DST_ALPHA, GL_ONE);
+}
 }  // namespace nimagna

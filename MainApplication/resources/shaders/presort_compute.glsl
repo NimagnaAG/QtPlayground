@@ -4,7 +4,7 @@
 */
 
 /*%%HEADER%%*/
-
+#version 450
 layout(local_size_x = 256) in;
 
 uniform mat4 modelViewProj;

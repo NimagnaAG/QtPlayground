@@ -4,7 +4,7 @@
 */
 
 /*%%HEADER%%*/
-
+#version 450
 uniform vec4 viewport;  // x, y, WIDTH, HEIGHT
 
 layout(points) in;
