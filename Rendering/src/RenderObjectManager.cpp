@@ -5,6 +5,7 @@
 #include <Rendering/GeoGsRenderObject.h>
 #include <Rendering/GltfRenderObject.h>
 #include <Rendering/GsRenderObject.h>
+#include <Rendering/PlyRenderObject.h>
 
 #include <QtCore/QThread>
 #include <QtGui/QPainter>
@@ -174,13 +175,13 @@ void RenderObjectManager::addObject(RenderObjectType type, const QString& filena
       renderObject = std::make_shared<GltfRenderObject>(filename);
       break;
     case nimagna::RenderObjectManager::RenderObjectType::kGs:
-      renderObject = std::make_shared<GeoGsRenderObject>(filename);
+      renderObject = std::make_shared<GsRenderObject>(filename);
       break;
     case nimagna::RenderObjectManager::RenderObjectType::kGeoGs:
       renderObject = std::make_shared<GeoGsRenderObject>(filename);
       break;
     case nimagna::RenderObjectManager::RenderObjectType::kPly:
-      renderObject = std::make_shared<GsRenderObject>(filename);
+      renderObject = std::make_shared<PlyRenderObject>(filename);
       break;
     default:
       break;

@@ -5,19 +5,8 @@
 
 #include "texture.h"
 
-#ifdef __ANDROID__
-#include <EGL/egl.h>
-#include <EGL/eglext.h>
-#include <GLES3/gl3.h>
-#include <GLES3/gl3ext.h>
-#else
-#include <GL/glew.h>
-#define GL_GLEXT_PROTOTYPES 1
-#include <SDL2/SDL_opengl.h>
-#include <SDL2/SDL_opengl_glext.h>
-#endif
-
 #include "core/image.h"
+#include <QOpenGLExtraFunctions>
 
 static GLenum filterTypeToGL[] = {
     GL_NEAREST,
@@ -73,7 +62,9 @@ Texture::Texture(const Image& image, const Params& params)
 
     if ((int)params.minFilter >= (int)FilterType::NearestMipmapNearest)
     {
-        glGenerateMipmap(GL_TEXTURE_2D);
+      QOpenGLExtraFunctions* f = QOpenGLContext::currentContext()->extraFunctions();
+      f-> glGenerateMipmap(GL_TEXTURE_2D);
+       
     }
 
     if (image.pixelFormat == PixelFormat::RA || image.pixelFormat == PixelFormat::RGBA)
@@ -103,6 +94,7 @@ Texture::~Texture()
 
 void Texture::Bind(int unit) const
 {
-    glActiveTexture(GL_TEXTURE0 + unit);
+  QOpenGLExtraFunctions* f = QOpenGLContext::currentContext()->extraFunctions();
+  f->glActiveTexture(GL_TEXTURE0 + unit);
     glBindTexture(GL_TEXTURE_2D, texture);
 }

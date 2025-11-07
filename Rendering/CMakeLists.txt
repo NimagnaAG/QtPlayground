@@ -1,3 +1,4 @@
+
 set(PROJECT_NAME Rendering)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON) 
@@ -34,6 +35,15 @@ set(Header_Files
     "include/Rendering/GsRenderObject.h"
     "include/Rendering/GeoGsRenderObject.h"
     "include/Rendering/PlyRenderObject.h"
+    "include/Rendering/pointcloud.h"
+    "include/Rendering/gaussiancloud.h" 
+    "include/Rendering/radix_sort.hpp" 
+    "include/Rendering/ply.h"
+    "core/framebuffer.h" 
+    "core/util.h" 
+    "core/binaryattribute.h"
+    "core/vertexbuffer.h"
+    "core/program.h"
 )
 source_group("Header Files" FILES ${Header_Files})
 
@@ -48,6 +58,14 @@ set(Source_Files
     "src/GeoGsRenderObject.cpp" 
     "src/GltfRenderObject.cpp"
     "src/PlyRenderObject.cpp"
+    "src/pointcloud.cpp"
+    "src/gaussiancloud.cpp"  
+    "src/ply.cpp"
+    "core/framebuffer.cpp"  
+    "core/util.cpp" 
+    "core/binaryattribute.cpp"
+    "core/vertexbuffer.cpp"
+    "core/program.cpp"
 
 )
 source_group("Source Files" FILES ${Source_Files})
@@ -80,10 +98,12 @@ find_package(Qt6
         Multimedia 
         MultimediaWidgets 
         OpenGL
+        Gui
+        Widgets
     REQUIRED
 )
 find_package(Spdlog REQUIRED)
-
+find_package(Eigen3 REQUIRED)
 ################################################################################
 # Public: include directories
 ################################################################################
@@ -122,6 +142,7 @@ set(LIBRARY_DEPENDENCIES
     PRIVATE Qt::MultimediaWidgets
     PRIVATE Qt::OpenGL
     PRIVATE NimagnaExtern::Spdlog
+    PRIVATE Eigen3::Eigen  
 )
 target_compile_definitions(${PROJECT_NAME} 
     PRIVATE ${NIMAGNA_COMPILE_DEFINITIONS}

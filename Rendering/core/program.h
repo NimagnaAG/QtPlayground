@@ -9,12 +9,12 @@
 #include <iostream>
 #include <unordered_map>
 #include <vector>
+ #include <QtOpenGL/QOpenGLBuffer>
+#include <QtOpenGL/QOpenGLFunctions_4_5_Core>
+#include <QtOpenGL/QOpenGLShaderProgram>
 
-#include "core/log.h"
-
-class Program
-{
-public:
+class Program  {
+ public:
     Program();
     ~Program();
 
@@ -37,11 +37,19 @@ public:
         auto iter = uniforms.find(name);
         if (iter != uniforms.end())
         {
+          if constexpr (std::is_same_v<T, int32_t> || std::is_same_v<T, uint32_t> ||
+                        std::is_same_v<T, float> || std::is_same_v<T, glm::vec2> ||
+                        std::is_same_v<T, glm::vec3> || std::is_same_v<T, glm::vec4> ||
+                        std::is_same_v<T, glm::mat2> || std::is_same_v<T, glm::mat3> ||
+                        std::is_same_v<T, glm::mat4>) {
             SetUniformRaw(iter->second.loc, value);
+          } else {
+            std::cerr << "Unsupported uniform type for \"" << name << "\"\n";
+          }
         }
         else
         {
-            Log::W("Could not find uniform \"%s\" for program \"%s\"\n", name.c_str(), debugName.c_str());
+            printf("Could not find uniform \"%s\" for program \"%s\"\n", name.c_str(), debugName.c_str());
         }
     }
 
@@ -63,17 +71,17 @@ public:
         {
             SetAttribRaw(iter->second.loc, values, stride);
         }
-        else
+       /* else
         {
             Log::W("Could not find attrib \"%s\" for program \"%s\"\n", name.c_str(), debugName.c_str());
-        }
+        }*/
     }
 
     void SetAttribRaw(int loc, float* values, size_t stride = 0) const;
     void SetAttribRaw(int loc, glm::vec2* values, size_t stride = 0) const;
     void SetAttribRaw(int loc, glm::vec3* values, size_t stride = 0) const;
     void SetAttribRaw(int loc, glm::vec4* values, size_t stride = 0) const;
-
+    QOpenGLFunctions* glFuncs;
 protected:
 
     void Delete();

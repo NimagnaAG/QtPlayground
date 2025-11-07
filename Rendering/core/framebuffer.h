@@ -4,15 +4,18 @@
 */
 
 #pragma once
-
+#define GL_GLEXT_PROTOTYPES
 #include <stdint.h>
 #include <memory>
-
+#include <qopenglextrafunctions.h>
+  #include <qopenglfunctions_4_5_core.h>
+#include<qopenglfunctions.h>
 struct Texture;
 
-struct FrameBuffer
+struct FrameBuffer 
 {
     FrameBuffer();
+
     ~FrameBuffer();
 
     void Bind() const;
@@ -29,5 +32,7 @@ struct FrameBuffer
     uint32_t fbo;
     std::shared_ptr<Texture> colorAttachment;
     std::shared_ptr<Texture> depthAttachment;
-    std::shared_ptr<Texture> stencilAttachment;
+    std::shared_ptr<Texture> stencilAttachment; 
+    QOpenGLExtraFunctions* glFuncs;
+    QOpenGLFunctions_4_0_Core* f; 
 };

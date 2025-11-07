@@ -11,8 +11,8 @@ int main(int argc, char* argv[]) {
 
   // OpenGL surface preset
   QSurfaceFormat format;
-  format.setVersion(4, 0);
-  format.setProfile(QSurfaceFormat::CoreProfile);
+  format.setVersion(4, 6);
+  format.setProfile(QSurfaceFormat::CompatibilityProfile);
   QSurfaceFormat::setDefaultFormat(format);
 
   // To render the output preview also in a separate window, the OpenGLContexts must be shared

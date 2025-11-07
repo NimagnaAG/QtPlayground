@@ -2,28 +2,17 @@
     Copyright (c) 2024 Anthony J. Thibault
     This software is licensed under the MIT License. See LICENSE for more details.
 */
-
+#define GL_GLEXT_PROTOTYPES 1
 #include "program.h"
 
 #include <cassert>
 #include <iostream>
 #include <memory>
-#include <sstream>
-
-#ifdef __ANDROID__
-#include <EGL/egl.h>
-#include <EGL/eglext.h>
-#include <GLES3/gl3.h>
-#include <GLES3/gl3ext.h>
-#include <GLES3/gl32.h>
-#else
-#include <GL/glew.h>
-#define GL_GLEXT_PROTOTYPES 1
-#include <SDL2/SDL_opengl.h>
-#include <SDL2/SDL_opengl_glext.h>
-#endif
-
-#include "log.h"
+#include <sstream> 
+#include <qopenglext.h>
+#include<QtGui/qopenglfunctions.h>
+ #include <QtGui/qopenglcontext.h>
+//#include "log.h"
 #include "util.h"
 
 #ifndef NDEBUG
@@ -53,43 +42,43 @@ static void DumpShaderSource(const std::string& source)
     std::stringstream ss(source);
     std::string line;
     int i = 1;
-    while (std::getline(ss, line))
+    /*while (std::getline(ss, line))
     {
-        Log::D("%04d: %s\n", i, line.c_str());
+        SPDLOG_INFO("%04d: %s\n", i, line.c_str());
         i++;
     }
-    Log::D("\n");
+    SPDLOG_INFO("\n");*/
 }
 
-static bool CompileShader(GLenum type, const std::string& source, GLint* shaderOut, const std::string& debugName)
-{
-    GLint shader = glCreateShader(type);
+static bool CompileShader(GLenum type, const std::string& source, GLint* shaderOut, const std::string& debugName) {
+  QOpenGLFunctions* glFuncs = QOpenGLContext::currentContext()->functions(); 
+    GLint shader = glFuncs->glCreateShader(type);
     int size = static_cast<int>(source.size());
     const GLchar* sourcePtr = source.c_str();
-    glShaderSource(shader, 1, (const GLchar**)&sourcePtr, &size);
-    glCompileShader(shader);
+    glFuncs->glShaderSource(shader, 1, (const GLchar**)&sourcePtr, &size);
+    glFuncs->glCompileShader(shader);
 
     GLint compiled;
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
+    glFuncs->glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
 
     if (!compiled)
     {
-        Log::E("shader compilation error for \"%s\"!\n", debugName.c_str());
+         SPDLOG_ERROR("shader compilation error for \"%s\"!\n", debugName.c_str());
     }
 
     GLint bufferLen = 0;
-    glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &bufferLen);
+    glFuncs->glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &bufferLen);
     if (bufferLen > 1)
     {
         if (compiled)
         {
-            Log::E("shader compilation warning for \"%s\"!\n", debugName.c_str());
+           SPDLOG_ERROR("shader compilation warning for \"%s\"!\n", debugName.c_str());
         }
 
         GLsizei len = 0;
         std::unique_ptr<char> buffer(new char[bufferLen]);
-        glGetShaderInfoLog(shader, bufferLen, &len, buffer.get());
-        Log::E("%s\n", buffer.get());
+        glFuncs->glGetShaderInfoLog(shader, bufferLen, &len, buffer.get());
+        SPDLOG_ERROR("%s\n", buffer.get());
         DumpShaderSource(source);
     }
 
@@ -113,6 +102,7 @@ Program::Program() : program(0), vertShader(0), geomShader(0), fragShader(0), co
 #else
     AddMacro("HEADER", "#version 460");
 #endif
+    glFuncs = QOpenGLContext::currentContext()->functions();
 }
 
 Program::~Program()
@@ -152,7 +142,7 @@ bool Program::LoadVertGeomFrag(const std::string& vertFilename, const std::strin
     std::string vertSource, geomSource, fragSource;
     if (!LoadFile(vertFilename, vertSource))
     {
-        Log::E("Failed to load vertex shader %s\n", vertFilename.c_str());
+        SPDLOG_ERROR("Failed to load vertex shader %s\n", vertFilename.c_str());
         return false;
     }
     vertSource = ExpandMacros(macros, vertSource);
@@ -161,7 +151,7 @@ bool Program::LoadVertGeomFrag(const std::string& vertFilename, const std::strin
     {
         if (!LoadFile(geomFilename, geomSource))
         {
-            Log::E("Failed to load geometry shader %s\n", geomFilename.c_str());
+            SPDLOG_ERROR("Failed to load geometry shader %s\n", geomFilename.c_str());
             return false;
         }
         geomSource = ExpandMacros(macros, geomSource);
@@ -169,14 +159,14 @@ bool Program::LoadVertGeomFrag(const std::string& vertFilename, const std::strin
 
     if (!LoadFile(fragFilename, fragSource))
     {
-        Log::E("Failed to load fragment shader \"%s\"\n", fragFilename.c_str());
+        SPDLOG_ERROR("Failed to load fragment shader \"%s\"\n", fragFilename.c_str());
         return false;
     }
     fragSource = ExpandMacros(macros, fragSource);
 
     if (!CompileShader(GL_VERTEX_SHADER, vertSource, &vertShader, vertFilename))
     {
-        Log::E("Failed to compile vertex shader \"%s\"\n", vertFilename.c_str());
+        SPDLOG_ERROR("Failed to compile vertex shader \"%s\"\n", vertFilename.c_str());
         return false;
     }
 
@@ -185,40 +175,40 @@ bool Program::LoadVertGeomFrag(const std::string& vertFilename, const std::strin
         geomSource = ExpandMacros(macros, geomSource);
         if (!CompileShader(GL_GEOMETRY_SHADER, geomSource, &geomShader, geomFilename))
         {
-            Log::E("Failed to compile geometry shader \"%s\"\n", geomFilename.c_str());
+            SPDLOG_ERROR("Failed to compile geometry shader \"%s\"\n", geomFilename.c_str());
             return false;
         }
     }
 
     if (!CompileShader(GL_FRAGMENT_SHADER, fragSource, &fragShader, fragFilename))
     {
-        Log::E("Failed to compile fragment shader \"%s\"\n", fragFilename.c_str());
+        SPDLOG_ERROR("Failed to compile fragment shader \"%s\"\n", fragFilename.c_str());
         return false;
     }
-
-    program = glCreateProgram();
-    glAttachShader(program, vertShader);
-    glAttachShader(program, fragShader);
+    
+    program = glFuncs->glCreateProgram();
+    glFuncs->glAttachShader(program, vertShader);
+    glFuncs->glAttachShader(program, fragShader);
     if (useGeomShader)
     {
-        glAttachShader(program, geomShader);
+        glFuncs->glAttachShader(program, geomShader);
     }
-    glLinkProgram(program);
+    glFuncs->glLinkProgram(program);
 
     if (!CheckLinkStatus())
     {
-        Log::E("Failed to link program \"%s\"\n", debugName.c_str());
+        SPDLOG_ERROR("Failed to link program \"%s\"\n", debugName.c_str());
 
         // dump shader source for reference
-        Log::D("\n");
-        Log::D("%s =\n", vertFilename.c_str());
+        SPDLOG_INFO("\n");
+        SPDLOG_INFO("%s =\n", vertFilename.c_str());
         DumpShaderSource(vertSource);
         if (useGeomShader)
         {
-            Log::D("%s =\n", geomFilename.c_str());
+            SPDLOG_INFO("%s =\n", geomFilename.c_str());
             DumpShaderSource(geomSource);
         }
-        Log::D("%s =\n", fragFilename.c_str());
+        SPDLOG_INFO("%s =\n", fragFilename.c_str());
         DumpShaderSource(fragSource);
 
         return false;
@@ -228,24 +218,24 @@ bool Program::LoadVertGeomFrag(const std::string& vertFilename, const std::strin
     static char name[MAX_NAME_SIZE];
 
     GLint numAttribs;
-    glGetProgramiv(program, GL_ACTIVE_ATTRIBUTES, &numAttribs);
+    glFuncs->glGetProgramiv(program, GL_ACTIVE_ATTRIBUTES, &numAttribs);
     for (int i = 0; i < numAttribs; ++i)
     {
         Variable v;
         GLsizei strLen;
-        glGetActiveAttrib(program, i, MAX_NAME_SIZE, &strLen, &v.size, &v.type, name);
-        v.loc = glGetAttribLocation(program, name);
+        glFuncs->glGetActiveAttrib(program, i, MAX_NAME_SIZE, &strLen, &v.size, &v.type, name);
+        v.loc = glFuncs->glGetAttribLocation(program, name);
         attribs[name] = v;
     }
 
     GLint numUniforms;
-    glGetProgramiv(program, GL_ACTIVE_UNIFORMS, &numUniforms);
+    glFuncs->glGetProgramiv(program, GL_ACTIVE_UNIFORMS, &numUniforms);
     for (int i = 0; i < numUniforms; ++i)
     {
         Variable v;
         GLsizei strLen;
-        glGetActiveUniform(program, i, MAX_NAME_SIZE, &strLen, &v.size, &v.type, name);
-        int loc = glGetUniformLocation(program, name);
+        glFuncs->glGetActiveUniform(program, i, MAX_NAME_SIZE, &strLen, &v.size, &v.type, name);
+        int loc = glFuncs->glGetUniformLocation(program, name);
         v.loc = loc;
         uniforms[name] = v;
     }
@@ -265,7 +255,7 @@ bool Program::LoadCompute(const std::string& computeFilename)
     std::string computeSource;
     if (!LoadFile(computeFilename, computeSource))
     {
-        Log::E("Failed to load compute shader \"%s\"\n", computeFilename.c_str());
+        SPDLOG_ERROR("Failed to load compute shader \"%s\"\n", computeFilename.c_str());
         return false;
     }
 
@@ -274,25 +264,25 @@ bool Program::LoadCompute(const std::string& computeFilename)
     computeSource = ExpandMacros(macros, computeSource);
     if (!CompileShader(GL_COMPUTE_SHADER, computeSource, &computeShader, computeFilename))
     {
-        Log::E("Failed to compile compute shader \"%s\"\n", computeFilename.c_str());
+        SPDLOG_ERROR("Failed to compile compute shader \"%s\"\n", computeFilename.c_str());
         return false;
     }
 
     GL_ERROR_CHECK("Program::LoadCompute CompileShader");
 
-    program = glCreateProgram();
-    glAttachShader(program, computeShader);
-    glLinkProgram(program);
+    program = glFuncs->glCreateProgram();
+    glFuncs->glAttachShader(program, computeShader);
+    glFuncs->glLinkProgram(program);
 
     GL_ERROR_CHECK("Program::LoadCompute Attach and Link");
 
     if (!CheckLinkStatus())
     {
-        Log::E("Failed to link program \"%s\"\n", debugName.c_str());
+        SPDLOG_ERROR("Failed to link program \"%s\"\n", debugName.c_str());
 
         // dump shader source for reference
-        Log::D("\n");
-        Log::D("%s =\n", computeFilename.c_str());
+        SPDLOG_INFO("\n");
+        SPDLOG_INFO("%s =\n", computeFilename.c_str());
         DumpShaderSource(computeSource);
 
         return false;
@@ -302,13 +292,13 @@ bool Program::LoadCompute(const std::string& computeFilename)
     static char name[MAX_NAME_SIZE];
 
     GLint numUniforms;
-    glGetProgramiv(program, GL_ACTIVE_UNIFORMS, &numUniforms);
+    glFuncs->glGetProgramiv(program, GL_ACTIVE_UNIFORMS, &numUniforms);
     for (int i = 0; i < numUniforms; ++i)
     {
         Variable v;
         GLsizei strLen;
-        glGetActiveUniform(program, i, MAX_NAME_SIZE, &strLen, &v.size, &v.type, name);
-        int loc = glGetUniformLocation(program, name);
+        glFuncs->glGetActiveUniform(program, i, MAX_NAME_SIZE, &strLen, &v.size, &v.type, name);
+        int loc = glFuncs->glGetUniformLocation(program, name);
         v.loc = loc;
         uniforms[name] = v;
     }
@@ -322,7 +312,7 @@ bool Program::LoadCompute(const std::string& computeFilename)
 
 void Program::Bind() const
 {
-    glUseProgram(program);
+   glFuncs-> glUseProgram(program);
 }
 
 int Program::GetUniformLoc(const std::string& name) const
@@ -335,7 +325,7 @@ int Program::GetUniformLoc(const std::string& name) const
     else
     {
         assert(false);
-        Log::W("Could not find uniform \"%s\" for program \"%s\"\n", name.c_str(), debugName.c_str());
+        SPDLOG_INFO("Could not find uniform \"%s\" for program \"%s\"\n", name.c_str(), debugName.c_str());
         return 0;
     }
 }
@@ -349,7 +339,7 @@ int Program::GetAttribLoc(const std::string& name) const
     }
     else
     {
-        Log::W("Could not find attrib \"%s\" for program \"%s\"\n", name.c_str(), debugName.c_str());
+        SPDLOG_INFO("Could not find attrib \"%s\" for program \"%s\"\n", name.c_str(), debugName.c_str());
         assert(false);
         return 0;
     }
@@ -357,71 +347,71 @@ int Program::GetAttribLoc(const std::string& name) const
 
 void Program::SetUniformRaw(int loc, uint32_t value) const
 {
-    glUniform1ui(loc, value);
+//    glFuncs->glUniform1ui(loc, value);
 }
 
 void Program::SetUniformRaw(int loc, int32_t value) const
 {
-    glUniform1i(loc, value);
+    glFuncs->glUniform1i(loc, value);
 }
 
 void Program::SetUniformRaw(int loc, float value) const
 {
-    glUniform1f(loc, value);
+    glFuncs->glUniform1f(loc, value);
 }
 
 void Program::SetUniformRaw(int loc, const glm::vec2& value) const
 {
-    glUniform2fv(loc, 1, (float*)&value);
+    glFuncs->glUniform2fv(loc, 1, (float*)&value);
 }
 
 void Program::SetUniformRaw(int loc, const glm::vec3& value) const
 {
-    glUniform3fv(loc, 1, (float*)&value);
+  glFuncs->glUniform3fv(loc, 1, (float*)&value);
 }
 
 void Program::SetUniformRaw(int loc, const glm::vec4& value) const
 {
-    glUniform4fv(loc, 1, (float*)&value);
+  glFuncs->glUniform4fv(loc, 1, (float*)&value);
 }
 
 void Program::SetUniformRaw(int loc, const glm::mat2& value) const
 {
-    glUniformMatrix2fv(loc, 1, GL_FALSE, (float*)&value);
+  glFuncs->glUniformMatrix2fv(loc, 1, GL_FALSE, (float*)&value);
 }
 
 void Program::SetUniformRaw(int loc, const glm::mat3& value) const
 {
-    glUniformMatrix3fv(loc, 1, GL_FALSE, (float*)&value);
+  glFuncs->glUniformMatrix3fv(loc, 1, GL_FALSE, (float*)&value);
 }
 
 void Program::SetUniformRaw(int loc, const glm::mat4& value) const
 {
-    glUniformMatrix4fv(loc, 1, GL_FALSE, (float*)&value);
+  glFuncs->glUniformMatrix4fv(loc, 1, GL_FALSE, (float*)&value);
 }
 
 void Program::SetAttribRaw(int loc, float* values, size_t stride) const
 {
-    glVertexAttribPointer(loc, 1, GL_FLOAT, GL_FALSE, (GLsizei)stride, values);
-    glEnableVertexAttribArray(loc);
+  glFuncs->glVertexAttribPointer(loc, 1, GL_FLOAT, GL_FALSE, (GLsizei)stride, values);
+  glFuncs->glEnableVertexAttribArray(loc);
 }
 
 void Program::SetAttribRaw(int loc, glm::vec2* values, size_t stride) const
 {
-    glVertexAttribPointer(loc, 2, GL_FLOAT, GL_FALSE, (GLsizei)stride, values);
-    glEnableVertexAttribArray(loc);
+  glFuncs->glVertexAttribPointer(loc, 2, GL_FLOAT, GL_FALSE, (GLsizei)stride, values);
+  glFuncs->glEnableVertexAttribArray(loc);
 }
 
 void Program::SetAttribRaw(int loc, glm::vec3* values, size_t stride) const
 {
-    glVertexAttribPointer(loc, 3, GL_FLOAT, GL_FALSE, (GLsizei)stride, values);
-    glEnableVertexAttribArray(loc);
+  glFuncs->glVertexAttribPointer(loc, 3, GL_FLOAT, GL_FALSE, (GLsizei)stride, values);
+  glFuncs->glEnableVertexAttribArray(loc);
 }
 
 void Program::SetAttribRaw(int loc, glm::vec4* values, size_t stride) const
 {
-    glVertexAttribPointer(loc, 4, GL_FLOAT, GL_FALSE, (GLsizei)stride, values);
-    glEnableVertexAttribArray(loc);
+  glFuncs->glVertexAttribPointer(loc, 4, GL_FLOAT, GL_FALSE, (GLsizei)stride, values);
+  glFuncs->glEnableVertexAttribArray(loc);
 }
 
 void Program::Delete()
@@ -430,31 +420,31 @@ void Program::Delete()
 
     if (vertShader > 0)
     {
-        glDeleteShader(vertShader);
+      glFuncs->glDeleteShader(vertShader);
         vertShader = 0;
     }
 
     if (geomShader > 0)
     {
-        glDeleteShader(geomShader);
+      glFuncs->glDeleteShader(geomShader);
         geomShader = 0;
     }
 
     if (fragShader > 0)
     {
-        glDeleteShader(fragShader);
+      glFuncs->glDeleteShader(fragShader);
         fragShader = 0;
     }
 
     if (computeShader > 0)
     {
-        glDeleteShader(computeShader);
+      glFuncs->glDeleteShader(computeShader);
         computeShader = 0;
     }
 
     if (program > 0)
     {
-        glDeleteProgram(program);
+      glFuncs->glDeleteProgram(program);
         program = 0;
     }
 
@@ -465,24 +455,24 @@ void Program::Delete()
 bool Program::CheckLinkStatus()
 {
     GLint linked;
-    glGetProgramiv(program, GL_LINK_STATUS, &linked);
+  glFuncs->glGetProgramiv(program, GL_LINK_STATUS, &linked);
 
     if (!linked)
     {
-        Log::E("Failed to link shaders \"%s\"\n", debugName.c_str());
+        SPDLOG_ERROR("Failed to link shaders \"%s\"\n", debugName.c_str());
     }
 
     const GLint MAX_BUFFER_LEN = 4096;
     GLsizei bufferLen = 0;
     std::unique_ptr<char> buffer(new char[MAX_BUFFER_LEN]);
-    glGetProgramInfoLog(program, MAX_BUFFER_LEN, &bufferLen, buffer.get());
+    glFuncs->glGetProgramInfoLog(program, MAX_BUFFER_LEN, &bufferLen, buffer.get());
     if (bufferLen > 0)
     {
         if (linked)
         {
-            Log::W("Warning during linking shaders \"%s\"\n", debugName.c_str());
+            SPDLOG_INFO("Warning during linking shaders \"%s\"\n", debugName.c_str());
         }
-        Log::W("%s\n", buffer.get());
+        SPDLOG_INFO("%s\n", buffer.get());
     }
 
 #ifdef WARNINGS_AS_ERRORS

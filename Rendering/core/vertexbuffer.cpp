@@ -7,24 +7,14 @@
 
 #include <cassert>
 #include <string.h>
-
-#ifdef __ANDROID__
-#include <EGL/egl.h>
-#include <EGL/eglext.h>
-#include <GLES3/gl3.h>
-#include <GLES3/gl3ext.h>
-#else
-#include <GL/glew.h>
+#include <QtOpenGL/QOpenGLFunctions_4_5_Core> 
+ #include <QtGui/QOpenGLExtraFunctions>
+ 
 #define GL_GLEXT_PROTOTYPES 1
-#include <SDL2/SDL_opengl.h>
-#include <SDL2/SDL_opengl_glext.h>
-#endif
-
 #include "util.h"
-
-#ifdef __ANDROID__
-static void glBufferStorage(GLenum target, GLsizeiptr size, const void* data, GLbitfield flags)
-{
+ 
+  void BufferObject::glBufferStorage(GLenum target, GLsizeiptr size, const void* data,
+                                          GLbitfield flags) {
 	GLenum usage = 0;
 	if (flags & GL_DYNAMIC_STORAGE_BIT)
 	{
@@ -48,14 +38,14 @@ static void glBufferStorage(GLenum target, GLsizeiptr size, const void* data, GL
 			usage = GL_STATIC_DRAW;
 		}
 	}
-	glBufferData(target, size, data, usage);
-}
-#endif
-
-BufferObject::BufferObject(int targetIn, void* data, size_t size, unsigned int flags)
-{
-	target = targetIn;
-    glGenBuffers(1, &obj);
+        QOpenGLExtraFunctions* glFuncs = QOpenGLContext::currentContext()->extraFunctions();
+        glFuncs->glBufferData(target, size, data, usage);
+} 
+BufferObject::BufferObject(int targetIn, void* data, size_t size, unsigned int flags) {
+  glFuncs = QOpenGLContext::currentContext()->extraFunctions();
+   
+  	target = targetIn;
+    glFuncs-> glGenBuffers(1, &obj);
 	Bind();
     glBufferStorage(target, size, data, flags);
 	Unbind();
@@ -64,9 +54,10 @@ BufferObject::BufferObject(int targetIn, void* data, size_t size, unsigned int f
 }
 
 BufferObject::BufferObject(int targetIn, const std::vector<float>& data, unsigned int flags)
-{
+{ glFuncs = QOpenGLContext::currentContext()->extraFunctions();
+  
 	target = targetIn;
-    glGenBuffers(1, &obj);
+    glFuncs->glGenBuffers(1, &obj);
 	Bind();
     glBufferStorage(target, sizeof(float) * data.size(), (void*)data.data(), flags);
 	Unbind();
@@ -75,9 +66,10 @@ BufferObject::BufferObject(int targetIn, const std::vector<float>& data, unsigne
 }
 
 BufferObject::BufferObject(int targetIn, const std::vector<glm::vec2>& data, unsigned int flags)
-{
-	target = targetIn;
-    glGenBuffers(1, &obj);
+{ 
+	glFuncs = QOpenGLContext::currentContext()->extraFunctions();
+  target = targetIn;
+    glFuncs->glGenBuffers(1, &obj);
 	Bind();
     glBufferStorage(target, sizeof(glm::vec2) * data.size(), (void*)data.data(), flags);
 	Unbind();
@@ -86,9 +78,10 @@ BufferObject::BufferObject(int targetIn, const std::vector<glm::vec2>& data, uns
 }
 
 BufferObject::BufferObject(int targetIn, const std::vector<glm::vec3>& data, unsigned int flags)
-{
-	target = targetIn;
-    glGenBuffers(1, &obj);
+{ 
+	glFuncs = QOpenGLContext::currentContext()->extraFunctions();
+  target = targetIn;
+  glFuncs->glGenBuffers(1, &obj);
 	Bind();
     glBufferStorage(target, sizeof(glm::vec3) * data.size(), (void*)data.data(), flags);
 	Unbind();
@@ -97,9 +90,11 @@ BufferObject::BufferObject(int targetIn, const std::vector<glm::vec3>& data, uns
 }
 
 BufferObject::BufferObject(int targetIn, const std::vector<glm::vec4>& data, unsigned int flags)
-{
-	target = targetIn;
-    glGenBuffers(1, &obj);
+{ 
+
+	glFuncs = QOpenGLContext::currentContext()->extraFunctions();
+  target = targetIn;
+  glFuncs->glGenBuffers(1, &obj);
 	Bind();
     glBufferStorage(target, sizeof(glm::vec4) * data.size(), (void*)data.data(), flags);
 	Unbind();
@@ -108,9 +103,11 @@ BufferObject::BufferObject(int targetIn, const std::vector<glm::vec4>& data, uns
 }
 
 BufferObject::BufferObject(int targetIn, const std::vector<uint32_t>& data, unsigned int flags)
-{
-	target = targetIn;
-    glGenBuffers(1, &obj);
+{ 
+
+	glFuncs = QOpenGLContext::currentContext()->extraFunctions();
+  target = targetIn;
+  glFuncs->glGenBuffers(1, &obj);
 	Bind();
     glBufferStorage(target, sizeof(uint32_t) * data.size(), (void*)data.data(), flags);
 	Unbind();
@@ -120,51 +117,51 @@ BufferObject::BufferObject(int targetIn, const std::vector<uint32_t>& data, unsi
 
 BufferObject::~BufferObject()
 {
-    glDeleteBuffers(1, &obj);
+  glFuncs->glDeleteBuffers(1, &obj);
 }
 
-void BufferObject::Bind() const
+void BufferObject::Bind()  
 {
-	glBindBuffer(target, obj);
+  glFuncs->glBindBuffer(target, obj);
 }
 
-void BufferObject::Unbind() const
+void BufferObject::Unbind()  
 {
-	glBindBuffer(target, 0);
+  glFuncs->glBindBuffer(target, 0);
 }
 
 void BufferObject::Update(const std::vector<float>& data)
 {
 	Bind();
-    glBufferSubData(target, 0, sizeof(float) * data.size(), (void*)data.data());
+  glFuncs->glBufferSubData(target, 0, sizeof(float) * data.size(), (void*)data.data());
 	Unbind();
 }
 
 void BufferObject::Update(const std::vector<glm::vec2>& data)
 {
 	Bind();
-    glBufferSubData(target, 0, sizeof(glm::vec2) * data.size(), (void*)data.data());
+  glFuncs->glBufferSubData(target, 0, sizeof(glm::vec2) * data.size(), (void*)data.data());
 	Unbind();
 }
 
 void BufferObject::Update(const std::vector<glm::vec3>& data)
 {
 	Bind();
-    glBufferSubData(target, 0, sizeof(glm::vec3) * data.size(), (void*)data.data());
+  glFuncs->glBufferSubData(target, 0, sizeof(glm::vec3) * data.size(), (void*)data.data());
 	Unbind();
 }
 
 void BufferObject::Update(const std::vector<glm::vec4>& data)
 {
 	Bind();
-    glBufferSubData(target, 0, sizeof(glm::vec4) * data.size(), (void*)data.data());
+  glFuncs->glBufferSubData(target, 0, sizeof(glm::vec4) * data.size(), (void*)data.data());
 	Unbind();
 }
 
 void BufferObject::Update(const std::vector<uint32_t>& data)
 {
 	Bind();
-    glBufferSubData(target, 0, sizeof(uint32_t) * data.size(), (void*)data.data());
+  glFuncs->glBufferSubData(target, 0, sizeof(uint32_t) * data.size(), (void*)data.data());
 	Unbind();
 }
 
@@ -174,33 +171,36 @@ void BufferObject::Read(std::vector<uint32_t>& data)
 	size_t bufferSize = sizeof(uint32_t) * data.size();
 	assert(bufferSize == (elementSize * sizeof(uint32_t) * numElements));
 	//void* rawBuffer = glMapBuffer(target, GL_READ_ONLY);
-	void* rawBuffer = glMapBufferRange(target, 0, bufferSize, GL_MAP_READ_BIT);
+        void* rawBuffer = glFuncs->glMapBufferRange(target, 0, bufferSize, GL_MAP_READ_BIT);
 	if (rawBuffer)
 	{
 		memcpy((void*)data.data(), rawBuffer, bufferSize);
 	}
-	glUnmapBuffer(target);
+        glFuncs->glUnmapBuffer(target);
 	Unbind();
 }
 
 VertexArrayObject::VertexArrayObject()
 {
-	glGenVertexArrays(1, &obj);
+  
+  glFuncs = QOpenGLContext::currentContext()->extraFunctions();
+
+	glFuncs->glGenVertexArrays(1, &obj);
 }
 
 VertexArrayObject::~VertexArrayObject()
 {
-	glDeleteVertexArrays(1, &obj);
+  glFuncs->glDeleteVertexArrays(1, &obj);
 }
 
-void VertexArrayObject::Bind() const
+void VertexArrayObject::Bind()  
 {
-	glBindVertexArray(obj);
+  glFuncs->glBindVertexArray(obj);
 }
 
-void VertexArrayObject::Unbind() const
+void VertexArrayObject::Unbind()  
 {
-	glBindVertexArray(0);
+  glFuncs->glBindVertexArray(0);
 }
 
 void VertexArrayObject::SetAttribBuffer(int loc, std::shared_ptr<BufferObject> attribBuffer)
@@ -209,8 +209,9 @@ void VertexArrayObject::SetAttribBuffer(int loc, std::shared_ptr<BufferObject> a
 
 	Bind();
 	attribBuffer->Bind();
-	glVertexAttribPointer(loc, attribBuffer->elementSize, GL_FLOAT, GL_FALSE, 0, nullptr);
-	glEnableVertexAttribArray(loc);
+        glFuncs->glVertexAttribPointer(loc, attribBuffer->elementSize, GL_FLOAT, GL_FALSE, 0,
+                                       nullptr);
+        glFuncs->glEnableVertexAttribArray(loc);
 	attribBuffer->Unbind();
 	attribBufferVec.push_back(attribBuffer);
 	Unbind();
@@ -226,7 +227,7 @@ void VertexArrayObject::SetElementBuffer(std::shared_ptr<BufferObject> elementBu
 	Unbind();
 }
 
-void VertexArrayObject::DrawElements(int mode) const
+void VertexArrayObject::DrawElements(int mode)  
 {
 	Bind();
 	glDrawElements((GLenum)mode, elementBuffer->numElements, GL_UNSIGNED_INT, nullptr);

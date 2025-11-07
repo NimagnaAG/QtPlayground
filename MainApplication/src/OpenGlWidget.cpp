@@ -16,8 +16,8 @@ OpenGlWidget::OpenGlWidget(QWidget* parent /*= nullptr*/, Qt::WindowFlags f /*= 
   mTextureRenderObject->setEnableDepthTest(false);
   QSurfaceFormat format;
   format.setRenderableType(QSurfaceFormat::OpenGL);
-  format.setProfile(QSurfaceFormat::CoreProfile);
-  format.setVersion(4, 0);
+  format.setProfile(QSurfaceFormat::CompatibilityProfile);
+  format.setVersion(4, 6);
   format.setSamples(8);
   mOrthographic2DFraming = std::make_shared<RenderData>();
   mOrthographic2DFraming->setRenderMode(RenderData::RenderMode::Render2D);
@@ -85,7 +85,7 @@ void OpenGlWidget::paintGL() {
   glViewport(mViewPort.x(), mViewPort.y(), mViewPort.width(), mViewPort.height());
   glClearColor(0.f, 0.f, 0.f, 1.0f);
   glClear(GL_COLOR_BUFFER_BIT);
-  glBlendFunc(GL_ONE, GL_ZERO);
+ // glBlendFunc(GL_ONE, GL_ZERO);
 
   // render RenderObjectManager's framebuffer as texture to screen
   // only paint if there's a render object manager and it is initialized
